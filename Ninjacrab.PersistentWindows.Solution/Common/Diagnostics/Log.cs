@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Diagnostics;
 
 namespace PersistentWindows.Common.Diagnostics
@@ -9,6 +11,142 @@ namespace PersistentWindows.Common.Diagnostics
         static EventLog eventLog;
         public static bool silent = false;
         static bool registered = false;
+
+        // 檔案記錄
+        //
+        // 只寫 Windows 事件記錄並不可靠：註冊事件來源需要系統管理員權限，
+        // 而 EventLog.SourceExists() 在一般權限下甚至會直接擲出 SecurityException
+        // （無法搜尋 Security 與 State 記錄檔）。使用者因此常常什麼記錄都看不到。
+        // 這裡另外寫一份純文字記錄檔，不需要任何特殊權限。
+        private const long MaxLogFileBytes = 2 * 1024 * 1024;
+        private const int RotatedLogCount = 2;
+
+        private static readonly object fileLock = new object();
+        private static string logFilePath;
+        private static List<string> pendingLines = new List<string>();
+
+        /// <summary>記錄檔完整路徑，尚未設定時為 null。</summary>
+        public static string LogFilePath
+        {
+            get { return logFilePath; }
+        }
+
+        /// <summary>
+        /// 設定記錄檔位置並寫出在此之前暫存的內容。
+        ///
+        /// Init() 在程式啟動最早期就被呼叫，那時還沒解析命令列、不知道資料夾在哪，
+        /// 因此先把訊息留在記憶體，等這個方法被呼叫後再一次寫出。
+        /// </summary>
+        public static void SetLogFolder(string folder)
+        {
+            if (String.IsNullOrEmpty(folder))
+                return;
+
+            try
+            {
+                if (!Directory.Exists(folder))
+                    Directory.CreateDirectory(folder);
+
+                string path = Path.Combine(folder,
+                    System.Windows.Forms.Application.ProductName + ".log");
+
+                List<string> pending;
+                lock (fileLock)
+                {
+                    logFilePath = path;
+                    pending = pendingLines;
+                    pendingLines = new List<string>();
+                }
+
+                foreach (var line in pending)
+                    AppendToFile(line);
+            }
+            catch (Exception)
+            {
+                // 無法建立記錄檔時安靜略過，事件記錄仍然可用
+            }
+        }
+
+        /// <summary>
+        /// 將一行訊息寫入記錄檔；尚未設定路徑時先暫存於記憶體。
+        /// </summary>
+        private static void WriteToFile(string kind, string message)
+        {
+            string line = String.Format("{0:yyyy-MM-dd HH:mm:ss.fff}\t{1}\t{2}",
+                DateTime.Now, kind, (message ?? String.Empty).Replace("\r\n", " ").Replace("\n", " ").TrimEnd());
+
+            lock (fileLock)
+            {
+                if (logFilePath == null)
+                {
+                    // 避免在極端情況下無限增長
+                    if (pendingLines.Count < 512)
+                        pendingLines.Add(line);
+                    return;
+                }
+            }
+
+            AppendToFile(line);
+        }
+
+        private static void AppendToFile(string line)
+        {
+            try
+            {
+                lock (fileLock)
+                {
+                    if (logFilePath == null)
+                        return;
+
+                    RotateIfNeeded();
+
+                    // 帶 BOM 的 UTF-8，記事本才能正確顯示中文
+                    bool needBom = !File.Exists(logFilePath) || new FileInfo(logFilePath).Length == 0;
+                    using (var writer = new StreamWriter(logFilePath, true, new UTF8Encoding(needBom)))
+                    {
+                        writer.WriteLine(line);
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // 記錄失敗絕不能影響主功能
+            }
+        }
+
+        /// <summary>
+        /// 記錄檔超過上限時輪替，保留數份舊檔。
+        /// </summary>
+        private static void RotateIfNeeded()
+        {
+            try
+            {
+                if (!File.Exists(logFilePath))
+                    return;
+
+                var info = new FileInfo(logFilePath);
+                if (info.Length < MaxLogFileBytes)
+                    return;
+
+                string oldest = logFilePath + "." + RotatedLogCount;
+                if (File.Exists(oldest))
+                    File.Delete(oldest);
+
+                for (int i = RotatedLogCount - 1; i >= 1; --i)
+                {
+                    string from = logFilePath + "." + i;
+                    if (File.Exists(from))
+                        File.Move(from, logFilePath + "." + (i + 1));
+                }
+
+                File.Move(logFilePath, logFilePath + ".1");
+            }
+            catch (Exception)
+            {
+                // 輪替失敗就繼續往原檔追加
+            }
+        }
+
         public static void Init()
         {
             eventLog = new EventLog();
@@ -98,6 +236,8 @@ namespace PersistentWindows.Common.Diagnostics
                 return;
 
             var message = Format(format, args);
+            WriteToFile("錯誤", message);
+
             if (message.Contains("Cannot create a file when that file already exists"))
             {
                 // ignore trivial error
@@ -122,6 +262,7 @@ namespace PersistentWindows.Common.Diagnostics
                 return;
 
             var message = Format(format, args);
+            WriteToFile("事件", message);
 #if DEBUG
             Console.Write(message);
 #endif

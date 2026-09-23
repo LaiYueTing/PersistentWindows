@@ -49,6 +49,7 @@
       <DependentUpon>DbKeySelect.cs</DependentUpon>
     </Compile>
     <Compile Include="Diagnostics\Log.cs" />
+    <Compile Include="Diagnostics\LogReader.cs" />
     <Compile Include="HotKeyWindow.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -70,6 +71,7 @@
     <Compile Include="MinimizeToNotify.cs" />
     <Compile Include="Models\ApplicationDisplayMetrics.cs" />
     <Compile Include="Models\DesktopDisplayMetrics.cs" />
+    <Compile Include="Models\LogRecord.cs" />
     <Compile Include="Models\SnapshotEntry.cs" />
     <Compile Include="NameDbKey.cs">
       <SubType>Form</SubType>
@@ -78,6 +80,7 @@
       <DependentUpon>NameDbKey.cs</DependentUpon>
     </Compile>
     <Compile Include="PersistentWindowProcessor.cs" />
+    <Compile Include="LogViewer.cs" />
     <Compile Include="SnapshotManager.cs" />
     <Compile Include="UiFont.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

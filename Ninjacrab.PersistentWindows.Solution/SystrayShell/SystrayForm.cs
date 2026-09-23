@@ -525,6 +525,11 @@ namespace PersistentWindows.SystrayShell
             }
         }
 
+        private void ViewLogMenuItemClickHandler(object sender, EventArgs e)
+        {
+            Program.ShowLogViewer();
+        }
+
         private void HelpToolStripMenuItemClickHandler(object sender, EventArgs e)
         {
             Process.Start(Program.ProjectUrl + "/blob/master/Help.md");

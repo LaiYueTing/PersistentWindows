@@ -409,6 +409,9 @@ if not errorlevel 1 goto wait_to_finish";
             AppdataFolder = appDataFolder;
             pwp.appDataFolder = appDataFolder;
 
+            // 資料夾確定後才知道記錄檔要寫到哪，此時會一併寫出啟動初期暫存的訊息
+            Log.SetLogFolder(appDataFolder);
+
             if (!Directory.Exists(appDataFolder))
                 Directory.CreateDirectory(appDataFolder);
 
@@ -862,6 +865,18 @@ if not errorlevel 1 goto wait_to_finish";
         static public void RestoreSnapshot(int id)
         {
             pwp.RestoreSnapshot(id);
+        }
+
+        /// <summary>
+        /// 開啟原生 Win32 快照管理對話框。
+        /// </summary>
+        /// <summary>
+        /// 開啟原生 Win32 記錄檢視對話框。
+        /// </summary>
+        static public void ShowLogViewer()
+        {
+            IntPtr icon = IdleIcon == null ? IntPtr.Zero : IdleIcon.Handle;
+            LogViewer.Show(IntPtr.Zero, Application.ProductName, icon);
         }
 
         static public void ShowAboutBox()

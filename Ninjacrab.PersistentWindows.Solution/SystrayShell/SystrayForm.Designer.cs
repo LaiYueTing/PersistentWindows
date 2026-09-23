@@ -27,6 +27,7 @@ namespace PersistentWindows.SystrayShell
         public  ToolStripMenuItem toggleIconMenuItem;
         public  ToolStripMenuItem invokeWebCommander;
         public  ToolStripMenuItem upgradeNoticeMenuItem;
+        private ToolStripMenuItem viewLogMenuItem;
         private ToolStripMenuItem helpToolStripMenuItem;
         private ToolStripMenuItem aboutToolStripMenuItem;
         private ToolStripMenuItem exitToolStripMenuItem;
@@ -57,6 +58,7 @@ namespace PersistentWindows.SystrayShell
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(SystrayForm));
             this.notifyIconMain = new System.Windows.Forms.NotifyIcon(this.components);
             this.contextMenuStripSysTray = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.viewLogMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.helpToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.captureToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -119,6 +121,7 @@ namespace PersistentWindows.SystrayShell
                 this.invokeWebCommander,
                 this.menuSeparators[3],
                 this.upgradeNoticeMenuItem,
+                this.viewLogMenuItem,
                 this.helpToolStripMenuItem,
                 this.aboutToolStripMenuItem,
                 this.menuSeparators[4],
@@ -185,6 +188,10 @@ namespace PersistentWindows.SystrayShell
             //
             // aboutToolStripMenuItem
             //
+            this.viewLogMenuItem.Name = "viewLogMenuItem";
+            this.viewLogMenuItem.Text = "檢視記錄(&L) ...";
+            this.viewLogMenuItem.Click += new System.EventHandler(this.ViewLogMenuItemClickHandler);
+
             //
             // helpToolStripMenuItem
             //
