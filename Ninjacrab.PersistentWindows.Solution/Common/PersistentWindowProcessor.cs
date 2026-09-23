@@ -1192,6 +1192,615 @@ namespace PersistentWindows.Common
             return true;
         }
 
+        /// <summary>
+        /// 快照儲存目錄，供快照管理介面以檔案總管開啟。
+        /// </summary>
+        public string SnapshotFolder
+        {
+            get { return appDataFolder; }
+        }
+
+        /// <summary>
+        /// 快照資料庫的完整檔案路徑。
+        /// </summary>
+        public string SnapshotDbFile
+        {
+            get { return persistDbName; }
+        }
+
+        /// <summary>
+        /// 盤點所有可用的快照：硬碟資料庫中的具名快照，以及目前記憶體中的快照。
+        /// </summary>
+        public List<SnapshotEntry> GetSnapshotCatalog()
+        {
+            var catalog = new List<SnapshotEntry>();
+            string liveDisplayKey = GetDisplayKey();
+
+            // 硬碟快照
+            try
+            {
+                using (var persistDB = new LiteDatabase(persistDbName))
+                {
+                    foreach (var collectionName in persistDB.GetCollectionNames())
+                    {
+                        var entry = new SnapshotEntry();
+                        entry.Source = SnapshotSource.Disk;
+                        entry.DbKey = collectionName;
+
+                        string displayKey;
+                        string name;
+                        DisplayKeyParser.Split(collectionName, out displayKey, out name);
+                        entry.DisplayKey = displayKey;
+                        entry.Name = String.IsNullOrEmpty(name) ? "(預設擷取)" : name;
+                        entry.DisplayLayout = DisplayKeyParser.ToDisplayLayout(displayKey);
+                        entry.MatchesCurrentDisplay = displayKey == liveDisplayKey;
+
+                        var collection = persistDB.GetCollection<ApplicationDisplayMetrics>(collectionName);
+                        var records = collection.FindAll().ToList();
+                        entry.WindowCount = records.Count;
+                        foreach (var record in records)
+                        {
+                            if (record.CaptureTime > entry.SaveTime)
+                                entry.SaveTime = record.CaptureTime;
+                        }
+
+                        catalog.Add(entry);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex.ToString());
+            }
+
+            // 記憶體快照
+            try
+            {
+                lock (captureLock)
+                {
+                    foreach (var displayKey in snapshotTakenTime.Keys)
+                    {
+                        foreach (var id in snapshotTakenTime[displayKey].Keys)
+                        {
+                            // 僅列出使用者手動命名的快照 (0-9 與 a-z)
+                            if (id < 0 || id >= MaxSnapshots - 2)
+                                continue;
+
+                            var entry = new SnapshotEntry();
+                            entry.Source = SnapshotSource.Memory;
+                            entry.SnapshotId = id;
+                            entry.DisplayKey = displayKey;
+                            entry.Name = SnapshotIdToName(id);
+                            entry.DisplayLayout = DisplayKeyParser.ToDisplayLayout(displayKey);
+                            entry.MatchesCurrentDisplay = displayKey == liveDisplayKey;
+                            entry.SaveTime = snapshotTakenTime[displayKey][id];
+                            entry.WindowCount = CountMemorySnapshotWindows(displayKey, id);
+                            catalog.Add(entry);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex.ToString());
+            }
+
+            catalog.Sort(delegate (SnapshotEntry a, SnapshotEntry b)
+            {
+                if (a.Source != b.Source)
+                    return a.Source.CompareTo(b.Source);
+                return String.Compare(a.Name, b.Name, StringComparison.CurrentCulture);
+            });
+
+            return catalog;
+        }
+
+        /// <summary>
+        /// 以可讀文字描述目前的顯示器環境，包含排列順序、解析度、桌面座標與系統裝置名稱。
+        /// </summary>
+        public string GetCurrentDisplayLayoutText()
+        {
+            try
+            {
+                var displays = Display.GetDisplaysDetailed();
+                if (displays.Count == 0)
+                    return "未知";
+
+                var parts = new List<string>();
+                for (int i = 0; i < displays.Count; ++i)
+                {
+                    var d = displays[i];
+                    string name = String.IsNullOrEmpty(d.SystemDeviceName)
+                        ? String.Empty
+                        : " " + d.SystemDeviceName.TrimEnd(' ');
+
+                    parts.Add(String.Format("#{0}{1} {2}x{3} @({4},{5}){6}",
+                        i + 1, name, d.Position.Width, d.Position.Height,
+                        d.Position.Left, d.Position.Top, d.IsPrimary ? " 主顯示器" : String.Empty));
+                }
+
+                return String.Join("   ", parts.ToArray());
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex.ToString());
+                return "未知";
+            }
+        }
+
+        /// <summary>
+        /// 解析指定快照內記錄的所有視窗細節。
+        /// </summary>
+        public List<SnapshotWindowInfo> GetSnapshotWindows(SnapshotEntry entry)
+        {
+            var windows = new List<SnapshotWindowInfo>();
+            if (entry == null)
+                return windows;
+
+            var monitors = DisplayKeyParser.ParseMonitors(entry.DisplayKey);
+
+            try
+            {
+                if (entry.Source == SnapshotSource.Disk)
+                {
+                    using (var persistDB = new LiteDatabase(persistDbName))
+                    {
+                        var collection = persistDB.GetCollection<ApplicationDisplayMetrics>(entry.DbKey);
+                        foreach (var record in collection.FindAll())
+                            windows.Add(ToSnapshotWindowInfo(record, monitors));
+                    }
+                }
+                else
+                {
+                    lock (captureLock)
+                    {
+                        if (!monitorApplications.ContainsKey(entry.DisplayKey))
+                            return windows;
+
+                        ulong mask = 1ul << entry.SnapshotId;
+                        foreach (var hwnd in monitorApplications[entry.DisplayKey].Keys)
+                        {
+                            foreach (var record in monitorApplications[entry.DisplayKey][hwnd])
+                            {
+                                if ((record.SnapShotFlags & mask) == 0)
+                                    continue;
+
+                                windows.Add(ToSnapshotWindowInfo(record, monitors));
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex.ToString());
+            }
+
+            windows.Sort(delegate (SnapshotWindowInfo a, SnapshotWindowInfo b)
+            {
+                int result = String.Compare(a.ProcessName, b.ProcessName, StringComparison.CurrentCultureIgnoreCase);
+                if (result != 0)
+                    return result;
+                return String.Compare(a.Title, b.Title, StringComparison.CurrentCulture);
+            });
+
+            return windows;
+        }
+
+        /// <summary>
+        /// 在目前執行中的視窗裡，找出與快照記錄相符的那一個。
+        ///
+        /// 比對順序由嚴到寬：行程名稱加類別名稱加完整標題，其次行程名稱加標題，
+        /// 最後只比對行程名稱。標題常會隨內容改變（例如瀏覽器分頁），
+        /// 因此最寬鬆的一層仍然有用。
+        /// </summary>
+        private IntPtr FindLiveWindow(ApplicationDisplayMetrics record)
+        {
+            if (record == null || String.IsNullOrEmpty(curDisplayKey))
+                return IntPtr.Zero;
+
+            if (!monitorApplications.ContainsKey(curDisplayKey))
+                return IntPtr.Zero;
+
+            IntPtr looseMatch = IntPtr.Zero;
+            IntPtr titleMatch = IntPtr.Zero;
+
+            foreach (var hwnd in monitorApplications[curDisplayKey].Keys)
+            {
+                if (!User32.IsWindow(hwnd))
+                    continue;
+
+                var list = monitorApplications[curDisplayKey][hwnd];
+                if (list.Count == 0)
+                    continue;
+
+                var live = list[list.Count - 1];
+                if (!String.Equals(live.ProcessName, record.ProcessName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (looseMatch == IntPtr.Zero)
+                    looseMatch = hwnd;
+
+                string liveTitle = GetWindowTitle(hwnd, use_cache: false);
+                if (!String.Equals(liveTitle, record.Title, StringComparison.Ordinal))
+                    continue;
+
+                if (titleMatch == IntPtr.Zero)
+                    titleMatch = hwnd;
+
+                if (String.Equals(live.ClassName, record.ClassName, StringComparison.Ordinal))
+                    return hwnd;
+            }
+
+            return titleMatch != IntPtr.Zero ? titleMatch : looseMatch;
+        }
+
+        /// <summary>
+        /// 只還原快照中的單一視窗，不影響其他視窗。
+        /// </summary>
+        /// <returns>成功時回傳 true；找不到對應的執行中視窗時回傳 false。</returns>
+        public bool RestoreSingleWindow(SnapshotWindowInfo info, out string error)
+        {
+            error = null;
+
+            if (info == null || info.Record == null)
+            {
+                error = "沒有可還原的視窗記錄。";
+                return false;
+            }
+
+            try
+            {
+                curDisplayKey = GetDisplayKey();
+
+                IntPtr hwnd = FindLiveWindow(info.Record);
+                if (hwnd == IntPtr.Zero)
+                {
+                    error = String.Format("找不到執行中的「{0}」視窗，請先啟動該程式。", info.ProcessName);
+                    return false;
+                }
+
+                var record = info.Record;
+                var placement = record.WindowPlacement;
+
+                if (placement.ShowCmd == ShowWindowCommands.ShowMaximized)
+                {
+                    // 先還原成一般狀態擺好位置，再最大化到正確的顯示器
+                    User32.ShowWindow(hwnd, (int)ShowWindowCommands.Restore);
+                    RECT normal = placement.NormalPosition;
+                    if (normal.Width > 0 && normal.Height > 0)
+                        User32.MoveWindow(hwnd, normal.Left, normal.Top, normal.Width, normal.Height, true);
+                    User32.ShowWindow(hwnd, (int)ShowWindowCommands.Maximize);
+                }
+                else if (record.IsMinimized || placement.ShowCmd == ShowWindowCommands.ShowMinimized)
+                {
+                    User32.ShowWindow(hwnd, (int)ShowWindowCommands.Minimize);
+                }
+                else
+                {
+                    RECT target = record.ScreenPosition;
+                    if (target.Width == 0 && target.Height == 0)
+                        target = placement.NormalPosition;
+
+                    if (target.Width <= 0 || target.Height <= 0)
+                    {
+                        error = "此記錄沒有有效的視窗座標。";
+                        return false;
+                    }
+
+                    User32.ShowWindow(hwnd, (int)ShowWindowCommands.Restore);
+                    User32.MoveWindow(hwnd, target.Left, target.Top, target.Width, target.Height, true);
+                }
+
+                User32.SetForegroundWindow(hwnd);
+                Log.Event("已還原單一視窗 {0}「{1}」", info.ProcessName, info.Title);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex.ToString());
+                error = "還原視窗時發生錯誤，詳情請見記錄。";
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 從快照中移除單一視窗的記錄。
+        /// 硬碟快照會刪除資料庫中的該筆文件，記憶體快照則清除對應的快照旗標。
+        /// </summary>
+        public bool RemoveWindowFromSnapshot(SnapshotEntry entry, SnapshotWindowInfo info, out string error)
+        {
+            error = null;
+
+            if (entry == null || info == null || info.Record == null)
+            {
+                error = "沒有可移除的視窗記錄。";
+                return false;
+            }
+
+            try
+            {
+                if (entry.Source == SnapshotSource.Disk)
+                {
+                    using (var persistDB = new LiteDatabase(persistDbName))
+                    {
+                        if (!persistDB.CollectionExists(entry.DbKey))
+                        {
+                            error = "找不到這份快照，可能已被刪除。";
+                            return false;
+                        }
+
+                        var collection = persistDB.GetCollection<ApplicationDisplayMetrics>(entry.DbKey);
+                        if (!collection.Delete(info.Record.Id))
+                        {
+                            error = "找不到這筆視窗記錄，可能已被移除。";
+                            return false;
+                        }
+                    }
+                }
+                else
+                {
+                    lock (captureLock)
+                    {
+                        if (!monitorApplications.ContainsKey(entry.DisplayKey))
+                        {
+                            error = "找不到這份記憶體快照。";
+                            return false;
+                        }
+
+                        ulong mask = 1ul << entry.SnapshotId;
+                        bool cleared = false;
+                        foreach (var hwnd in monitorApplications[entry.DisplayKey].Keys)
+                        {
+                            foreach (var record in monitorApplications[entry.DisplayKey][hwnd])
+                            {
+                                if (!ReferenceEquals(record, info.Record))
+                                    continue;
+
+                                record.SnapShotFlags &= ~mask;
+                                cleared = true;
+                                break;
+                            }
+
+                            if (cleared)
+                                break;
+                        }
+
+                        if (!cleared)
+                        {
+                            error = "找不到這筆視窗記錄，可能已被移除。";
+                            return false;
+                        }
+                    }
+
+                    WriteDataDump();
+                }
+
+                Log.Event("已從快照 {0} 移除視窗 {1}「{2}」", entry.Name, info.ProcessName, info.Title);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex.ToString());
+                error = "移除視窗記錄時發生錯誤，詳情請見記錄。";
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 刪除硬碟中的快照，即移除資料庫中對應的集合。
+        /// </summary>
+        public bool DeleteDiskSnapshot(string dbKey)
+        {
+            if (String.IsNullOrEmpty(dbKey))
+                return false;
+
+            try
+            {
+                using (var persistDB = new LiteDatabase(persistDbName))
+                {
+                    if (!persistDB.CollectionExists(dbKey))
+                        return false;
+
+                    persistDB.DropCollection(dbKey);
+                }
+
+                normalSessions.Remove(dbKey);
+                Log.Event("已刪除硬碟快照 {0}", dbKey);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex.ToString());
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 刪除記憶體中的快照，清除所有視窗上對應的快照旗標。
+        /// </summary>
+        public bool DeleteMemorySnapshot(string displayKey, int snapshotId)
+        {
+            if (String.IsNullOrEmpty(displayKey) || snapshotId < 0)
+                return false;
+
+            try
+            {
+                lock (captureLock)
+                {
+                    ulong mask = 1ul << snapshotId;
+                    if (monitorApplications.ContainsKey(displayKey))
+                    {
+                        foreach (var hwnd in monitorApplications[displayKey].Keys)
+                        {
+                            foreach (var record in monitorApplications[displayKey][hwnd])
+                                record.SnapShotFlags &= ~mask;
+                        }
+                    }
+
+                    if (snapshotTakenTime.ContainsKey(displayKey))
+                        snapshotTakenTime[displayKey].Remove(snapshotId);
+                }
+
+                WriteDataDump();
+                Log.Event("已刪除記憶體快照 {0}", SnapshotIdToName(snapshotId));
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex.ToString());
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 重新命名硬碟快照，同時更新資料庫中的集合名稱。
+        /// </summary>
+        /// <returns>成功時回傳新的資料庫鍵值，失敗時回傳 null。</returns>
+        public string RenameDiskSnapshot(string dbKey, string newName)
+        {
+            if (String.IsNullOrEmpty(dbKey))
+                return null;
+
+            string displayKey;
+            string oldName;
+            DisplayKeyParser.Split(dbKey, out displayKey, out oldName);
+
+            string sanitized = SanitizeSnapshotName(newName);
+            string newDbKey = displayKey + sanitized;
+            if (newDbKey == dbKey)
+                return dbKey;
+
+            try
+            {
+                using (var persistDB = new LiteDatabase(persistDbName))
+                {
+                    if (!persistDB.CollectionExists(dbKey))
+                        return null;
+
+                    if (persistDB.CollectionExists(newDbKey))
+                        return null;
+
+                    persistDB.RenameCollection(dbKey, newDbKey);
+                }
+
+                normalSessions.Remove(dbKey);
+                normalSessions.Add(newDbKey);
+                if (dbDisplayKey == dbKey)
+                    dbDisplayKey = newDbKey;
+
+                Log.Event("快照 {0} 已重新命名為 {1}", dbKey, newDbKey);
+                return newDbKey;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex.ToString());
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 將目前的視窗佈局儲存為硬碟上的新具名快照。
+        /// </summary>
+        public bool SaveCurrentLayoutAsSnapshot(string name)
+        {
+            try
+            {
+                curDisplayKey = GetDisplayKey();
+                dbDisplayKey = curDisplayKey + SanitizeSnapshotName(name);
+                BatchCaptureApplicationsOnCurrentDisplays(saveToDB: true);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex.ToString());
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 濾除快照名稱中不適合作為資料庫集合名稱的字元。
+        /// </summary>
+        public static string SanitizeSnapshotName(string name)
+        {
+            if (String.IsNullOrEmpty(name))
+                return String.Empty;
+
+            var builder = new StringBuilder();
+            foreach (char c in name.Trim())
+            {
+                // LiteDB 集合名稱不接受減號，其餘控制字元一併濾除
+                if (c == '-' || Char.IsControl(c))
+                    continue;
+                builder.Append(c);
+            }
+
+            return builder.ToString();
+        }
+
+        private static string SnapshotIdToName(int id)
+        {
+            if (id < 10)
+                return ((char)('0' + id)).ToString();
+
+            return ((char)('a' + id - 10)).ToString();
+        }
+
+        private int CountMemorySnapshotWindows(string displayKey, int snapshotId)
+        {
+            if (!monitorApplications.ContainsKey(displayKey))
+                return 0;
+
+            ulong mask = 1ul << snapshotId;
+            int count = 0;
+            foreach (var hwnd in monitorApplications[displayKey].Keys)
+            {
+                foreach (var record in monitorApplications[displayKey][hwnd])
+                {
+                    if ((record.SnapShotFlags & mask) == 0)
+                        continue;
+
+                    ++count;
+                    break;
+                }
+            }
+
+            return count;
+        }
+
+        private static SnapshotWindowInfo ToSnapshotWindowInfo(ApplicationDisplayMetrics record,
+            List<MonitorInfoText> monitors)
+        {
+            var info = new SnapshotWindowInfo();
+            info.ProcessName = String.IsNullOrEmpty(record.ProcessName) ? "未知" : record.ProcessName;
+            info.Title = record.Title ?? String.Empty;
+
+            RECT position = record.ScreenPosition;
+            if (position.Width == 0 && position.Height == 0)
+                position = record.WindowPlacement.NormalPosition;
+
+            info.X = position.Left;
+            info.Y = position.Top;
+            info.Width = position.Width;
+            info.Height = position.Height;
+
+            if (record.WindowPlacement.ShowCmd == ShowWindowCommands.ShowMaximized)
+                info.State = "最大化";
+            else if (record.IsMinimized || record.WindowPlacement.ShowCmd == ShowWindowCommands.ShowMinimized)
+                info.State = "最小化";
+            else if (record.IsFullScreen)
+                info.State = "全螢幕";
+            else
+                info.State = "一般";
+
+            info.MonitorText = DisplayKeyParser.ResolveMonitor(monitors, info.X, info.Y, info.Width, info.Height);
+            info.ClassName = record.ClassName ?? String.Empty;
+            info.Record = record;
+
+            return info;
+        }
+
         public List<String> GetDbCollections()
         {
             using (var persistDB = new LiteDatabase(persistDbName))

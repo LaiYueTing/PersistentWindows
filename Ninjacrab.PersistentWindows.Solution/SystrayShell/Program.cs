@@ -862,6 +862,16 @@ if not errorlevel 1 goto wait_to_finish";
             }
         }
 
+        /// <summary>
+        /// 開啟原生 Win32 快照管理對話框。
+        /// </summary>
+        static public void ShowSnapshotManager()
+        {
+            // 系統匣主視窗永遠隱藏，因此不作為擁有者，改由對話框自行帶到前景
+            IntPtr icon = IdleIcon == null ? IntPtr.Zero : IdleIcon.Handle;
+            SnapshotManager.Show(IntPtr.Zero, pwp, GetProcessInfo, icon);
+        }
+
         static public void FgWindowToBottom()
         {
             pwp.FgWindowToBottom();

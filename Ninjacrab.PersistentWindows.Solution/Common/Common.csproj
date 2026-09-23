@@ -70,6 +70,7 @@
     <Compile Include="MinimizeToNotify.cs" />
     <Compile Include="Models\ApplicationDisplayMetrics.cs" />
     <Compile Include="Models\DesktopDisplayMetrics.cs" />
+    <Compile Include="Models\SnapshotEntry.cs" />
     <Compile Include="NameDbKey.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -77,12 +78,14 @@
       <DependentUpon>NameDbKey.cs</DependentUpon>
     </Compile>
     <Compile Include="PersistentWindowProcessor.cs" />
+    <Compile Include="SnapshotManager.cs" />
     <Compile Include="UiFont.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="VirtualDesktop.cs" />
     <Compile Include="WinApiBridge\CallWindowProcedureParam.cs" />
     <Compile Include="WinApiBridge\Display.cs" />
     <Compile Include="WinApiBridge\MonitorInfo.cs" />
+    <Compile Include="WinApiBridge\NativeDialog.cs" />
     <Compile Include="WinApiBridge\SetWindowPosFlags.cs" />
     <Compile Include="WinApiBridge\ShowWindowCommands.cs" />
     <Compile Include="WinApiBridge\User32.cs" />

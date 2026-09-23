@@ -407,6 +407,11 @@ namespace PersistentWindows.SystrayShell
         }
 
 
+        private void ManageSnapshot(object sender, EventArgs e)
+        {
+            Program.ShowSnapshotManager();
+        }
+
         private void PauseResumeAutoRestore(object sender, EventArgs e)
         {
             if (pauseAutoRestore)

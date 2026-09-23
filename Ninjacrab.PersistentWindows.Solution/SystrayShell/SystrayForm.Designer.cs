@@ -22,6 +22,7 @@ namespace PersistentWindows.SystrayShell
         private ToolStripMenuItem restoreAllParkedMenuItem;
         private ToolStripMenuItem captureSnapshotMenuItem;
         private ToolStripMenuItem restoreSnapshotMenuItem;
+        private ToolStripMenuItem manageSnapshotMenuItem;
         private ToolStripMenuItem pauseResumeToolStripMenuItem;
         public  ToolStripMenuItem toggleIconMenuItem;
         public  ToolStripMenuItem invokeWebCommander;
@@ -62,6 +63,7 @@ namespace PersistentWindows.SystrayShell
             this.restoreToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.captureSnapshotMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.restoreSnapshotMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.manageSnapshotMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.restoreAllParkedMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.pauseResumeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toggleIconMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -108,6 +110,7 @@ namespace PersistentWindows.SystrayShell
                 this.menuSeparators[0],
                 this.captureSnapshotMenuItem,
                 this.restoreSnapshotMenuItem,
+                this.manageSnapshotMenuItem,
                 this.menuSeparators[1],
                 this.restoreAllParkedMenuItem,
                 this.menuSeparators[2],
@@ -154,6 +157,12 @@ namespace PersistentWindows.SystrayShell
             this.restoreSnapshotMenuItem.Text = "還原快照(&T)";
             this.restoreSnapshotMenuItem.Click += new System.EventHandler(this.RestoreSnapshot);
             this.restoreSnapshotMenuItem.Enabled = false;
+
+            // 快照管理
+            //
+            this.manageSnapshotMenuItem.Name = "manage snapshot";
+            this.manageSnapshotMenuItem.Text = "快照管理(&M) ...";
+            this.manageSnapshotMenuItem.Click += new System.EventHandler(this.ManageSnapshot);
 
             // suspend/resume auto restore
             //
