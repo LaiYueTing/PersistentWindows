@@ -764,7 +764,7 @@ namespace PersistentWindows.Common
                 DebugInterval();
             });
             debugTimer.Change(2000, 2000);
-#endif            
+#endif
 
             foregroundTimer = new Timer(foregroundTimerCallback);
 
@@ -2936,7 +2936,7 @@ namespace PersistentWindows.Common
 
         public static IntPtr GetBackgroundWindow(IntPtr fgWnd, bool require_web_browser = true)
         {
-            for (IntPtr hwnd = fgWnd; true;) 
+            for (IntPtr hwnd = fgWnd; true;)
             {
                 hwnd = User32.GetWindow(hwnd, 2);
                 if (hwnd == IntPtr.Zero)
@@ -4148,7 +4148,7 @@ namespace PersistentWindows.Common
             RECT screenPosition = new RECT();
             User32.GetWindowRect(hwnd, ref screenPosition);
 
-            // window caption center might be occupied by other controls 
+            // window caption center might be occupied by other controls
             int centerx = screenPosition.Left + screenPosition.Width / 8;
 
             int centery = screenPosition.Top + 15;
@@ -4605,7 +4605,7 @@ namespace PersistentWindows.Common
                 foreach (var result in results)
                 {
                     if (dbMatchWindow.Contains(result.Id))
-                        continue; //id already matched (to another window) 
+                        continue; //id already matched (to another window)
                     if (!ignoreInvisible && result.IsInvisible != invisible)
                         continue;
 
@@ -4999,7 +4999,7 @@ namespace PersistentWindows.Common
                             Log.Error($"keep window size for floating window {GetWindowTitle(hWnd)}");
                             success &= User32.MoveWindow(hWnd, rect.Left, rect.Top, curDisplayMetrics.ScreenPosition.Width, curDisplayMetrics.ScreenPosition.Height, true);
                         }
-                            
+
                         if (debugWindows.Contains(hWnd))
                         Log.Event("MoveWindow({0} [{1}x{2}]-[{3}x{4}]) - {5}",
                             prevDisplayMetrics.ProcessName,
@@ -5072,7 +5072,7 @@ namespace PersistentWindows.Common
                             if (hWnd == prevZwnd)
                                 prevZwnd = new IntPtr(1); //place at bottom to avoid dead loop
                             else if (hWnd == IntPtr.Zero)
-                                prevZwnd = IntPtr.Zero - 2; //notopmost 
+                                prevZwnd = IntPtr.Zero - 2; //notopmost
                         }
 
                         hWinPosInfo = User32.DeferWindowPos(hWinPosInfo, hWnd, prevZwnd,

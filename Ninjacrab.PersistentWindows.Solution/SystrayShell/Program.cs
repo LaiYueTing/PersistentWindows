@@ -34,7 +34,7 @@ if not errorlevel 1 goto wait_to_finish";
 
         private const int MaxSnapshots = 38; // 0-9, a-z, ` and final one for undo
 
-        public static PersistentWindowProcessor pwp = null;    
+        public static PersistentWindowProcessor pwp = null;
         public static SystrayForm systrayForm = null;
         static bool silent = false; //suppress all balloon tip & sound prompt
         static bool notification = false; //pop balloon when auto restore
@@ -514,7 +514,7 @@ if not errorlevel 1 goto wait_to_finish";
             }
             else
             {
-                // pwp.fixZorder = 1 //do z-order recovery only for snapshot 
+                // pwp.fixZorder = 1 //do z-order recovery only for snapshot
             }
 
             pwp.showRestoreTip = ShowRestoreTip;
@@ -605,7 +605,7 @@ if not errorlevel 1 goto wait_to_finish";
             {
                 NotifyIcon ni = systrayForm.notifyIconMain;
                 if (!systrayForm.toggleIcon) {
-                    ni.Icon = BusyIcon; 
+                    ni.Icon = BusyIcon;
                 }
 
                 if (silent)
@@ -668,7 +668,7 @@ if not errorlevel 1 goto wait_to_finish";
                 systrayForm.EnableSnapshotRestore(enable);
         }
 
-        static System.Threading.Timer snapshot_timer; 
+        static System.Threading.Timer snapshot_timer;
         static public void CaptureSnapshot(int id, bool prompt = true, bool delayCapture = false)
         {
             snapshot_timer?.Dispose();

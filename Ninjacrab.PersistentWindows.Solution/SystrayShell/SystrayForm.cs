@@ -155,7 +155,7 @@ namespace PersistentWindows.SystrayShell
                     else if (keyPressed >= Keys.D0 && keyPressed <= Keys.D9)
                         snapshot = keyPressed - Keys.D0;
                     else if (keyPressed >= Keys.A && keyPressed <= Keys.Z)
-                        snapshot = keyPressed - Keys.A + 10; 
+                        snapshot = keyPressed - Keys.A + 10;
 
                     if (snapshot < 0)
                     {
@@ -230,7 +230,7 @@ namespace PersistentWindows.SystrayShell
                 }
             }
         }
-        
+
         public void EnableSnapshotRestore(bool enable)
         {
             restoreSnapshotMenuItem.Enabled = enable;
