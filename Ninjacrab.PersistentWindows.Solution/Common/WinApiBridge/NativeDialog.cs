@@ -52,6 +52,12 @@ namespace PersistentWindows.Common.WinApiBridge
 
         public const uint BS_PUSHBUTTON = 0x00000000;
         public const uint BS_DEFPUSHBUTTON = 0x00000001;
+        public const uint BS_AUTOCHECKBOX = 0x00000003;
+
+        public const uint BM_GETCHECK = 0x00F0;
+        public const uint BM_SETCHECK = 0x00F1;
+        public const int BST_UNCHECKED = 0;
+        public const int BST_CHECKED = 1;
 
         public const uint SS_LEFT = 0x00000000;
         public const uint SS_LEFTNOWORDWRAP = 0x0000000C;
@@ -79,6 +85,7 @@ namespace PersistentWindows.Common.WinApiBridge
         public const uint WM_SETFONT = 0x0030;
         public const uint WM_SETICON = 0x0080;
         public const uint WM_APP = 0x8000;
+        public const uint WM_TIMER = 0x0113;
 
         /// <summary>編輯方塊內容變更的通知碼，位於 WM_COMMAND 的高位字組。</summary>
         public const int EN_CHANGE = 0x0300;
@@ -274,6 +281,12 @@ namespace PersistentWindows.Common.WinApiBridge
 
         [DllImport("user32.dll")]
         public static extern bool EnableWindow(IntPtr hWnd, bool bEnable);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern IntPtr SetTimer(IntPtr hWnd, IntPtr nIDEvent, uint uElapse, IntPtr lpTimerFunc);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern bool KillTimer(IntPtr hWnd, IntPtr uIDEvent);
 
         [DllImport("user32.dll")]
         public static extern bool UpdateWindow(IntPtr hWnd);

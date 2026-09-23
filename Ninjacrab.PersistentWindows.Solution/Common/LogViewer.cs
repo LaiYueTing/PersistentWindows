@@ -30,10 +30,15 @@ namespace PersistentWindows.Common
         private const int IdcButtonCopy = 1402;
         private const int IdcButtonExport = 1403;
         private const int IdcButtonEventViewer = 1404;
+        private const int IdcCheckAutoRefresh = 1405;
         private const int IdcButtonClose = NativeDialog.IDCANCEL;
 
         /// <summary>背景載入完成時回送的自訂訊息。</summary>
         private const uint WM_LOG_LOADED = NativeDialog.WM_APP + 1;
+
+        /// <summary>自動更新用的計時器識別碼與間隔。</summary>
+        private const int AutoRefreshTimerId = 1;
+        private const int AutoRefreshIntervalMs = 2000;
 
         #endregion
 
@@ -53,6 +58,7 @@ namespace PersistentWindows.Common
         private const short ButtonExportWidth = 92;
         private const short ButtonEventViewerWidth = 96;
         private const short ButtonCloseWidth = 58;
+        private const short CheckAutoRefreshWidth = 76;
 
         private const short DialogFontSize = 9;
 
@@ -75,6 +81,11 @@ namespace PersistentWindows.Common
         private string loadError;
         private volatile bool loading;
         private volatile bool fromFile;
+
+        // 自動更新：只在記錄檔真的變動時才重載，避免無謂地清空清單
+        private long lastFileLength = -1;
+        private DateTime lastFileWriteTime = DateTime.MinValue;
+        private int savedSelection = -1;
         private int baseUnitX = 4;
         private int baseUnitY = 8;
 
@@ -135,7 +146,7 @@ namespace PersistentWindows.Common
         private byte[] BuildTemplate()
         {
             uint dialogStyle = NativeDialog.WS_POPUP | NativeDialog.WS_CAPTION | NativeDialog.WS_SYSMENU
-                | NativeDialog.WS_THICKFRAME | NativeDialog.WS_CLIPCHILDREN
+                | NativeDialog.WS_THICKFRAME | NativeDialog.WS_MAXIMIZEBOX | NativeDialog.WS_CLIPCHILDREN
                 | NativeDialog.DS_MODALFRAME | NativeDialog.DS_CENTER | NativeDialog.DS_NOIDLEMSG;
 
             var builder = new DialogTemplateBuilder(dialogStyle, NativeDialog.WS_EX_CONTROLPARENT,
@@ -158,7 +169,14 @@ namespace PersistentWindows.Common
             builder.AddControl(DialogTemplateBuilder.AtomEdit, IdcFilterEdit,
                 NativeDialog.WS_CHILD | NativeDialog.WS_VISIBLE | NativeDialog.WS_TABSTOP
                 | NativeDialog.ES_AUTOHSCROLL, NativeDialog.WS_EX_CLIENTEDGE,
-                (short)(Margin + 42), 18, (short)(contentWidth - 42), EditHeight, String.Empty);
+                (short)(Margin + 42), 18,
+                (short)(contentWidth - 42 - CheckAutoRefreshWidth - Gap), EditHeight, String.Empty);
+
+            builder.AddControl(DialogTemplateBuilder.AtomButton, IdcCheckAutoRefresh,
+                NativeDialog.WS_CHILD | NativeDialog.WS_VISIBLE | NativeDialog.WS_TABSTOP
+                | NativeDialog.BS_AUTOCHECKBOX, 0,
+                (short)(DialogWidth - Margin - CheckAutoRefreshWidth), 19,
+                CheckAutoRefreshWidth, LabelHeight + 2, "自動更新(&A)");
 
             builder.AddControl("SysListView32", IdcLogList, listStyle, NativeDialog.WS_EX_CLIENTEDGE,
                 Margin, 38, contentWidth, 220, String.Empty);
@@ -232,6 +250,11 @@ namespace PersistentWindows.Common
                     OnLoadFinished();
                     return new IntPtr(1);
 
+                case NativeDialog.WM_TIMER:
+                    if (wParam.ToInt32() == AutoRefreshTimerId)
+                        OnAutoRefreshTick();
+                    return new IntPtr(1);
+
                 case NativeDialog.WM_NOTIFY:
                     return OnNotify(lParam);
 
@@ -239,6 +262,7 @@ namespace PersistentWindows.Common
                     return OnCommand(LowWord(wParam), HighWord(wParam));
 
                 case NativeDialog.WM_CLOSE:
+                    NativeDialog.KillTimer(hwndDlg, new IntPtr(AutoRefreshTimerId));
                     NativeDialog.EndDialog(hwndDlg, IntPtr.Zero);
                     return new IntPtr(1);
             }
@@ -264,10 +288,14 @@ namespace PersistentWindows.Common
             logList.InsertColumn(1, "類型", 70, NativeDialog.LVCFMT_LEFT);
             logList.InsertColumn(2, "內容", 600, NativeDialog.LVCFMT_LEFT);
 
+            NativeDialog.SendMessageW(NativeDialog.GetDlgItem(dialogHandle, IdcCheckAutoRefresh),
+                NativeDialog.BM_SETCHECK, new IntPtr(NativeDialog.BST_CHECKED), IntPtr.Zero);
+
             LayoutControls();
             User32.SetForegroundWindow(dialogHandle);
 
             StartLoad();
+            NativeDialog.SetTimer(dialogHandle, new IntPtr(AutoRefreshTimerId), AutoRefreshIntervalMs, IntPtr.Zero);
         }
 
         private void OnGetMinMaxInfo(IntPtr lParam)
@@ -341,7 +369,14 @@ namespace PersistentWindows.Common
                     OpenEventViewer();
                     return new IntPtr(1);
 
+                case IdcCheckAutoRefresh:
+                    // 重新勾選時立刻對齊最新內容
+                    if (IsAutoRefreshEnabled)
+                        OnAutoRefreshTick();
+                    return new IntPtr(1);
+
                 case IdcButtonClose:
+                    NativeDialog.KillTimer(dialogHandle, new IntPtr(AutoRefreshTimerId));
                     NativeDialog.EndDialog(dialogHandle, IntPtr.Zero);
                     return new IntPtr(1);
             }
@@ -391,9 +426,12 @@ namespace PersistentWindows.Common
             MoveControl(IdcStatusLabel, margin, y, contentWidth, labelHeight);
             y += labelHeight + gapY;
 
+            int autoWidth = Dx(CheckAutoRefreshWidth);
             MoveControl(IdcFilterLabel, margin, y + (editHeight - labelHeight) / 2, filterLabelWidth, labelHeight);
             MoveControl(IdcFilterEdit, margin + filterLabelWidth + Dx(2), y,
-                contentWidth - filterLabelWidth - Dx(2), editHeight);
+                contentWidth - filterLabelWidth - Dx(2) - autoWidth - gap, editHeight);
+            MoveControl(IdcCheckAutoRefresh, margin + contentWidth - autoWidth,
+                y + (editHeight - labelHeight) / 2, autoWidth, labelHeight + Dy(2));
             y += editHeight + gapY;
 
             int buttonTop = height - marginY - buttonHeight;
@@ -480,6 +518,7 @@ namespace PersistentWindows.Common
                 // 讓舊版留下的記錄仍然看得到。
                 var records = LogReader.ReadFile(Log.LogFilePath, LogReader.DefaultMaxRecords, out error);
                 fromFile = records.Count > 0;
+                RememberFileState();
 
                 if (records.Count == 0)
                 {
@@ -502,10 +541,91 @@ namespace PersistentWindows.Common
             thread.Start();
         }
 
+        /// <summary>記下目前記錄檔的大小與修改時間，作為下次比對的基準。</summary>
+        private void RememberFileState()
+        {
+            try
+            {
+                string path = Log.LogFilePath;
+                if (String.IsNullOrEmpty(path))
+                    return;
+
+                var info = new FileInfo(path);
+                if (!info.Exists)
+                    return;
+
+                lastFileLength = info.Length;
+                lastFileWriteTime = info.LastWriteTime;
+            }
+            catch (Exception)
+            {
+                // 忽略，下次輪詢會再試
+            }
+        }
+
         private void OnLoadFinished()
         {
             EnableActionButtons(true);
             ApplyFilter();
+            RestoreSelection();
+        }
+
+        private bool IsAutoRefreshEnabled
+        {
+            get
+            {
+                IntPtr check = NativeDialog.GetDlgItem(dialogHandle, IdcCheckAutoRefresh);
+                if (check == IntPtr.Zero)
+                    return false;
+
+                return NativeDialog.SendMessageW(check, NativeDialog.BM_GETCHECK,
+                    IntPtr.Zero, IntPtr.Zero).ToInt32() == NativeDialog.BST_CHECKED;
+            }
+        }
+
+        /// <summary>
+        /// 定期檢查記錄檔是否變動，只有真的有新內容時才重新載入。
+        /// 不論檔案是否改變都定期輪詢，成本僅是一次檔案屬性查詢。
+        /// </summary>
+        private void OnAutoRefreshTick()
+        {
+            if (loading || !IsAutoRefreshEnabled)
+                return;
+
+            string path = Log.LogFilePath;
+            if (String.IsNullOrEmpty(path))
+                return;
+
+            try
+            {
+                var info = new FileInfo(path);
+                if (!info.Exists)
+                    return;
+
+                if (info.Length == lastFileLength && info.LastWriteTime == lastFileWriteTime)
+                    return;
+
+                savedSelection = logList == null ? -1 : logList.SelectedIndex;
+                StartLoad();
+            }
+            catch (Exception)
+            {
+                // 檔案正在被寫入時查詢可能失敗，下一次再試
+            }
+        }
+
+        /// <summary>
+        /// 重新載入後盡量保留原本選取的那一列。
+        /// </summary>
+        private void RestoreSelection()
+        {
+            if (savedSelection < 0 || logList == null)
+                return;
+
+            if (savedSelection < shownRecords.Count)
+                logList.Select(savedSelection);
+
+            savedSelection = -1;
         }
 
         private void ApplyFilter()

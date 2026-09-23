@@ -151,7 +151,7 @@ namespace PersistentWindows.Common
         private byte[] BuildTemplate()
         {
             uint dialogStyle = NativeDialog.WS_POPUP | NativeDialog.WS_CAPTION | NativeDialog.WS_SYSMENU
-                | NativeDialog.WS_THICKFRAME | NativeDialog.WS_CLIPCHILDREN
+                | NativeDialog.WS_THICKFRAME | NativeDialog.WS_MAXIMIZEBOX | NativeDialog.WS_CLIPCHILDREN
                 | NativeDialog.DS_MODALFRAME | NativeDialog.DS_CENTER | NativeDialog.DS_NOIDLEMSG;
 
             var builder = new DialogTemplateBuilder(dialogStyle, NativeDialog.WS_EX_CONTROLPARENT,
