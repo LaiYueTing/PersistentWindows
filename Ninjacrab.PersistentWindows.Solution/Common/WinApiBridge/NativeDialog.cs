@@ -37,6 +37,8 @@ namespace PersistentWindows.Common.WinApiBridge
         public const uint WS_THICKFRAME = 0x00040000;
         public const uint WS_GROUP = 0x00020000;
         public const uint WS_TABSTOP = 0x00010000;
+        // 注意：這兩個值與 WS_GROUP、WS_TABSTOP 相同，
+        // 對最上層視窗解讀為最小化／最大化按鈕，對子控制項才是群組與定位停駐點
         public const uint WS_MINIMIZEBOX = 0x00020000;
         public const uint WS_MAXIMIZEBOX = 0x00010000;
 

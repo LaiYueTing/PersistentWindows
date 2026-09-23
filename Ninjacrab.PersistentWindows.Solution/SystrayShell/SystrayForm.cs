@@ -561,14 +561,66 @@ namespace PersistentWindows.SystrayShell
 
         private void ContextMenuClosed(object sender, ToolStripDropDownClosedEventArgs e)
         {
-            menuAutoCloseTimer.Stop();
+            StopMenuAutoCloseTimer();
         }
 
         private void MenuAutoCloseTick(object sender, EventArgs e)
         {
+            // 計時器可能在表單或選單已釋放之後才觸發。
+            // 這裡是 Win32 回呼，未攔截的例外會讓行程直接以
+            // STATUS_FATAL_USER_CALLBACK_EXCEPTION 中止，因此必須自行防護。
+            try
+            {
+                MenuAutoCloseTickCore();
+            }
+            catch (Exception ex)
+            {
+                StopMenuAutoCloseTimer();
+                Log.Error(ex.ToString());
+            }
+        }
+
+        /// <summary>
+        /// 由 Dispose() 呼叫：停用並釋放選單看門狗計時器。
+        /// </summary>
+        private void StopAndDisposeMenuAutoCloseTimer()
+        {
+            var timer = menuAutoCloseTimer;
+            menuAutoCloseTimer = null;
+            if (timer == null)
+                return;
+
+            try
+            {
+                timer.Stop();
+                timer.Tick -= MenuAutoCloseTick;
+                timer.Dispose();
+            }
+            catch (Exception)
+            {
+                // 釋放期間的失敗不應影響結束流程
+            }
+        }
+
+        private void StopMenuAutoCloseTimer()
+        {
+            var timer = menuAutoCloseTimer;
+            if (timer != null)
+                timer.Stop();
+        }
+
+        private void MenuAutoCloseTickCore()
+        {
+            if (IsDisposed || Disposing
+                || contextMenuStripSysTray == null || contextMenuStripSysTray.IsDisposed)
+            {
+                StopMenuAutoCloseTimer();
+                return;
+            }
+
             if (!contextMenuStripSysTray.Visible)
             {
-                menuAutoCloseTimer.Stop();
+                StopMenuAutoCloseTimer();
                 return;
             }
 
@@ -583,7 +635,7 @@ namespace PersistentWindows.SystrayShell
                 return;
 
             // 前景已不是選單，使用者已點往別處
-            menuAutoCloseTimer.Stop();
+            StopMenuAutoCloseTimer();
             contextMenuStripSysTray.Close(ToolStripDropDownCloseReason.AppFocusChange);
         }
 

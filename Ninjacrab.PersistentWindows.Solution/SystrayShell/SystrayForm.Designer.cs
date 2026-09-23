@@ -39,9 +39,16 @@ namespace PersistentWindows.SystrayShell
         /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
+            if (disposing)
             {
-                components.Dispose();
+                // 必須先停用並釋放選單看門狗計時器。
+                // 若讓它在表單釋放後才觸發，回呼中的例外會讓行程直接中止。
+                StopAndDisposeMenuAutoCloseTimer();
+
+                if (components != null)
+                {
+                    components.Dispose();
+                }
             }
             base.Dispose(disposing);
         }
