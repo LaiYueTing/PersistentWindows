@@ -33,7 +33,39 @@ namespace PersistentWindows.Common.Diagnostics
 
         public static void Exit()
         {
-            eventLog.Close();
+            if (eventLog != null)
+                eventLog.Close();
+        }
+
+        /// <summary>
+        /// 寫入 Windows 事件記錄。
+        ///
+        /// 記錄本身絕不能讓程式中斷：Init() 未被呼叫、事件來源未註冊或事件記錄已滿時，
+        /// 這裡一律安靜略過，否則 catch 區塊中的記錄呼叫會再拋一次例外，
+        /// 反而蓋掉原始錯誤並導致行程結束。
+        /// </summary>
+        private static void WriteEntrySafe(string message, int eventId)
+        {
+            var log = eventLog;
+            if (log == null)
+                return;
+
+            try
+            {
+                if (!registered)
+                {
+                    int index = message.IndexOf("::");
+                    if (index >= 0)
+                        message = message.Substring(index + 3);
+                    message = System.Windows.Forms.Application.ProductName + ": " + message;
+                }
+
+                log.WriteEntry(message, EventLogEntryType.Information, eventId, 0);
+            }
+            catch (Exception)
+            {
+                // 無法寫入事件記錄時安靜略過
+            }
         }
 
         /// <summary>
@@ -81,13 +113,7 @@ namespace PersistentWindows.Common.Diagnostics
 #if DEBUG
             Console.Write(message);
 #endif
-            if (!registered)
-            {
-                message = message.Substring(message.IndexOf("::") + 3);
-                eventLog.WriteEntry(System.Windows.Forms.Application.ProductName + ": " + message, EventLogEntryType.Information, 9999, 0);
-            }
-            else
-                eventLog.WriteEntry(message, EventLogEntryType.Information, 9999, 0);
+            WriteEntrySafe(message, 9999);
         }
 
         public static void Event(string format, params object[] args)
@@ -99,13 +125,7 @@ namespace PersistentWindows.Common.Diagnostics
 #if DEBUG
             Console.Write(message);
 #endif
-            if (!registered)
-            {
-                message = message.Substring(message.IndexOf("::") + 3);
-                eventLog.WriteEntry(System.Windows.Forms.Application.ProductName + ": " + message, EventLogEntryType.Information, 9990, 0);
-            }
-            else
-                eventLog.WriteEntry(message, EventLogEntryType.Information, 9990, 0);
+            WriteEntrySafe(message, 9990);
         }
 
         /// <summary>
