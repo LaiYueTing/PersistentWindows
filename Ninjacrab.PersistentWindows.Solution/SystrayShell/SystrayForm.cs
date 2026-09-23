@@ -44,6 +44,16 @@ namespace PersistentWindows.SystrayShell
 
         private System.Timers.Timer clickDelayTimer;
 
+        // 系統匣選單的自動關閉看門狗
+        //
+        // 只靠 SetForegroundWindow 讓選單成為前景視窗並不可靠：
+        // 一旦先開過強制回應對話框（例如快照管理），行程的前景狀態會改變，
+        // SetForegroundWindow 可能靜默失敗，選單就再也收不到停用通知而卡在畫面上。
+        // 這裡改為在選單開啟期間輪詢前景視窗，只要前景不是選單本身就主動關閉，
+        // 不依賴 WM_ACTIVATEAPP 是否送達。
+        private System.Windows.Forms.Timer menuAutoCloseTimer;
+        private int menuAutoCloseGrace;
+
         private Dictionary<string, bool> upgradeDownloaded = new Dictionary<string, bool>();
 
         public SystrayForm(bool enable_upgrade_notice)
@@ -72,6 +82,12 @@ namespace PersistentWindows.SystrayShell
                 webCommanderEnabled = false;
                 invokeWebCommander.Text = "啟用網頁指令視窗(&W)";
             }
+
+            menuAutoCloseTimer = new System.Windows.Forms.Timer();
+            menuAutoCloseTimer.Interval = 200;
+            menuAutoCloseTimer.Tick += MenuAutoCloseTick;
+
+            contextMenuStripSysTray.Closed += ContextMenuClosed;
 
             clickDelayTimer = new System.Timers.Timer(1000);
             clickDelayTimer.Elapsed += ClickTimerCallBack;
@@ -512,6 +528,53 @@ namespace PersistentWindows.SystrayShell
         private void AboutToolStripMenuItemClickHandler(object sender, EventArgs e)
         {
             Program.ShowAboutBox();
+        }
+
+        /// <summary>
+        /// 系統匣選單彈出時把自己提升為前景視窗。
+        /// 若不這麼做，使用者點選桌面或其他視窗時選單不會自動收起。
+        /// </summary>
+        private void ContextMenuOpened(object sender, EventArgs e)
+        {
+            // 系統匣圖示彈出的選單，其擁有者視窗並非前景視窗，
+            // 因此 ToolStripDropDown 收不到停用通知，點選別處時不會收起。
+            // 先把選單本身提升為前景視窗，再依 MSDN 的建議補送一則 WM_NULL，
+            // 讓工作列的訊息佇列重新評估前景狀態。
+            IntPtr handle = contextMenuStripSysTray.Handle;
+            User32.SetForegroundWindow(handle);
+            User32.PostMessageW(handle, User32.WM_NULL, IntPtr.Zero, IntPtr.Zero);
+
+            // 前兩次跳過，讓選單有時間取得前景
+            menuAutoCloseGrace = 2;
+            menuAutoCloseTimer.Start();
+        }
+
+        private void ContextMenuClosed(object sender, ToolStripDropDownClosedEventArgs e)
+        {
+            menuAutoCloseTimer.Stop();
+        }
+
+        private void MenuAutoCloseTick(object sender, EventArgs e)
+        {
+            if (!contextMenuStripSysTray.Visible)
+            {
+                menuAutoCloseTimer.Stop();
+                return;
+            }
+
+            if (menuAutoCloseGrace > 0)
+            {
+                --menuAutoCloseGrace;
+                return;
+            }
+
+            IntPtr foreground = User32.GetForegroundWindow();
+            if (foreground == contextMenuStripSysTray.Handle)
+                return;
+
+            // 前景已不是選單，使用者已點往別處
+            menuAutoCloseTimer.Stop();
+            contextMenuStripSysTray.Close(ToolStripDropDownCloseReason.AppFocusChange);
         }
 
         protected override void SetVisibleCore(bool value)

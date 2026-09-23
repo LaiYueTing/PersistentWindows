@@ -122,6 +122,7 @@ namespace PersistentWindows.SystrayShell
                 this.exitToolStripMenuItem});
             this.contextMenuStripSysTray.Name = "contextMenuStripSysTray";
             this.contextMenuStripSysTray.Font = PersistentWindows.Common.UiFont.Get(9F);
+            this.contextMenuStripSysTray.Opened += new System.EventHandler(this.ContextMenuOpened);
 
             // capture
             //
