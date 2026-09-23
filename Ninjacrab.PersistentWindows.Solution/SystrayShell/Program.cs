@@ -379,9 +379,10 @@ if not errorlevel 1 goto wait_to_finish";
             }
 
             string productName = System.Windows.Forms.Application.ProductName;
+            // 一律以寬字元 API (SHGetFolderPathW) 取得 %LOCALAPPDATA%，
+            // 避免使用者名稱含 Big5 衝碼字元時路徑被截斷而找不到設定檔
             string appDataFolder = redirect_appdata.Length > 0 ? redirect_appdata :
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    productName);
+                Path.Combine(Shell32.GetLocalAppDataPathW(), productName);
             string iconFolder = appDataFolder;
 #if DEBUG
             if (redirect_appdata.Length == 0)
@@ -559,7 +560,7 @@ if not errorlevel 1 goto wait_to_finish";
 
             try
             {
-                IntPtr taskbar = User32.FindWindowA("Shell_TrayWnd", null);
+                IntPtr taskbar = User32.FindWindowW("Shell_TrayWnd", null);
                 IntPtr hWndTrayNotify = User32.FindWindowEx(taskbar, IntPtr.Zero, "TrayNotifyWnd", null);
                 IntPtr hWndSysPager = User32.FindWindowEx(hWndTrayNotify, IntPtr.Zero, "SysPager", null);
                 IntPtr hWndToolbar = User32.FindWindowEx(hWndSysPager, IntPtr.Zero, "ToolbarWindow32", null);
@@ -582,7 +583,7 @@ if not errorlevel 1 goto wait_to_finish";
             string content = WaitPwFinish;
             content += $"\ntimeout /t {delay} /nobreak > NUL";
             content += "\nstart \"\" /B \"" + Path.Combine(Application.StartupPath, Application.ProductName) + ".exe\" " + "-wait_taskbar " + Program.CmdArgs;
-            File.WriteAllText(batFile, content);
+            BatchFile.Write(batFile, content);
             p.StartInfo.FileName = batFile;
             if (hidden)
             {

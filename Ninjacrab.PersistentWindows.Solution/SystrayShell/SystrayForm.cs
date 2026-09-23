@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Windows.Forms;
@@ -9,6 +9,7 @@ using System.IO.Compression;
 using System.Drawing;
 using System.Reflection;
 
+using PersistentWindows.Common;
 using PersistentWindows.Common.Diagnostics;
 using PersistentWindows.Common.WinApiBridge;
 
@@ -306,7 +307,7 @@ namespace PersistentWindows.SystrayShell
                         string content = Program.WaitPwFinish;
                         content += $"\ncopy /Y \"{dst_dir}\\*.*\" \"{install_dir}\"";
                         content += "\nstart \"\" /B \"" + Path.Combine(install_dir, Application.ProductName) + ".exe\" " + Program.CmdArgs;
-                        File.WriteAllText(batFile, content);
+                        BatchFile.Write(batFile, content);
 
                         if (autoUpgrade)
                             Upgrade();

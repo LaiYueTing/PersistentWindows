@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Text;
 using System.Runtime.InteropServices;
 
@@ -207,7 +207,7 @@ namespace PersistentWindows.Common.WinApiBridge
         [DllImport("user32.dll")]
         public static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr lprcClip, MonitorEnumDelegate lpfnEnum, IntPtr dwData);
 
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "GetMonitorInfoW")]
         public static extern bool GetMonitorInfo(IntPtr hMonitor, ref MonitorInfo lpmi);
 
         [DllImport("user32.dll", SetLastError = true)]
@@ -220,13 +220,13 @@ namespace PersistentWindows.Common.WinApiBridge
         [DllImport("user32.dll", SetLastError = true)]
         public static extern IntPtr WindowFromPoint(POINT pt);
 
-        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-        public static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName,int nMaxCount);
+        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode, EntryPoint = "GetClassNameW")]
+        public static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
 
-        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode, EntryPoint = "GetWindowTextLengthW")]
         public static extern int GetWindowTextLength(IntPtr hWnd);
 
-        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true, EntryPoint = "GetWindowTextW")]
         public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
 
         // Reads window title from win32k.sys cached state — no WM_GETTEXT sent, never blocks on target's UI thread.
@@ -243,7 +243,7 @@ namespace PersistentWindows.Common.WinApiBridge
 
         [DllImport("user32.dll")]
         public static extern bool GetClientRect(IntPtr hWnd, ref RECT lpRect);
-        
+
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool IntersectRect([Out] out RECT lprcDst, [In] ref RECT lprcSrc1, [In] ref RECT lprcSrc2);
@@ -311,7 +311,7 @@ namespace PersistentWindows.Common.WinApiBridge
         [DllImport("user32.dll", SetLastError = true)]
         public static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
 
-        [DllImport("user32.dll", ExactSpelling = true, CharSet = CharSet.Auto)]
+        [DllImport("user32.dll", ExactSpelling = true)]
         public static extern IntPtr GetParent(IntPtr hWnd);
 
         [DllImport("user32.dll")]
@@ -391,7 +391,7 @@ namespace PersistentWindows.Common.WinApiBridge
         }
         [DllImport("user32.dll")]
         public static extern bool RedrawWindow(IntPtr hWnd,
-            IntPtr lprcUpdate, //[In] ref RECT lprcUpdate, 
+            IntPtr lprcUpdate, //[In] ref RECT lprcUpdate,
             IntPtr hrgnUpdate, RedrawWindowFlags flags);
 
         [DllImport("user32.dll", SetLastError = true)]
@@ -418,10 +418,10 @@ namespace PersistentWindows.Common.WinApiBridge
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool IsTopLevelWindow(IntPtr hWnd);
 
-        [DllImport("user32.dll", SetLastError = true)]
-        public static extern IntPtr FindWindowA(string lpClassName, string lpWindowName);
+        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode, EntryPoint = "FindWindowW")]
+        public static extern IntPtr FindWindowW(string lpClassName, string lpWindowName);
 
-        [DllImport("user32.dll", SetLastError = true)]
+        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode, EntryPoint = "FindWindowExW")]
         public static extern IntPtr FindWindowEx(IntPtr parentHandle, IntPtr childAfter, string className, string windowTitle);
 
         [DllImport("user32.dll")]
@@ -443,13 +443,13 @@ namespace PersistentWindows.Common.WinApiBridge
         [StructLayout(LayoutKind.Sequential)]
         public struct CURSORINFO
         {
-            public Int32 cbSize;        // Specifies the size, in bytes, of the structure. 
+            public Int32 cbSize;        // Specifies the size, in bytes, of the structure.
                                         // The caller must set this to Marshal.SizeOf(typeof(CURSORINFO)).
             public Int32 flags;         // Specifies the cursor state. This parameter can be one of the following values:
                                         //    0             The cursor is hidden.
                                         //    CURSOR_SHOWING    The cursor is showing.
-            public IntPtr hCursor;          // Handle to the cursor. 
-            public POINT ptScreenPos;       // A POINT structure that receives the screen coordinates of the cursor. 
+            public IntPtr hCursor;          // Handle to the cursor.
+            public POINT ptScreenPos;       // A POINT structure that receives the screen coordinates of the cursor.
         }
 
         [DllImport("user32.dll", SetLastError = true)]
@@ -489,7 +489,7 @@ namespace PersistentWindows.Common.WinApiBridge
         public static extern uint GetClassLongPtr32(IntPtr hWnd, int nIndex);
         public static IntPtr GetClassLongPtr(IntPtr hWnd, int nIndex) => IntPtr.Size > 4 ? GetClassLongPtr64(hWnd, nIndex) : new IntPtr(GetClassLongPtr32(hWnd, nIndex));
 
-        [DllImport("user32.dll")]
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "LoadIconW")]
         public static extern IntPtr LoadIcon(IntPtr hInstance, string lpIconName);
 
         [DllImport("user32.dll")]
@@ -505,14 +505,18 @@ namespace PersistentWindows.Common.WinApiBridge
         public const int GCLP_HICONSM = -34;
         public const string IDI_APPLICATION = "#32512";
 
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "SendMessageW")]
         public static extern IntPtr SendMessage(IntPtr hWnd, int Msg, int wParam, StringBuilder lParam);
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true, EntryPoint = "PostMessageW")]
+        public static extern bool PostMessageW(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+        public const uint WM_NULL = 0x0000;
         public const int WM_COMMAND = 0x0111;
         public const int WM_SYSCOMMAND = 0x0112;
         public const int WM_GETICON = 0x7F;
         public const int SC_MINIMIZE = 0xF020;
         public const int SC_TOGGLE_TASKBAR_LOCK = 424;
-        [DllImport("user32.dll")]
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "SendMessageTimeoutW")]
         public static extern int SendMessageTimeout(IntPtr handle, int uMsg, uint wParam, uint lParam, uint fuFlags, int uTimeout, out uint lpdwResult);
         // SendMessageTimeoutFlags
         public const uint SMTO_NORMAL = 0x0000;
@@ -591,15 +595,15 @@ namespace PersistentWindows.Common.WinApiBridge
             public IntPtr dwExtraInfo;
         }
 
-        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true, EntryPoint = "SetWindowsHookExW")]
         public static extern IntPtr SetWindowsHookEx(int idHook,
             MouseHookHandler lpfn, IntPtr hMod, uint dwThreadId);
 
-        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        [DllImport("user32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool UnhookWindowsHookEx(IntPtr hhk);
 
-        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        [DllImport("user32.dll", SetLastError = true)]
         public static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, uint wParam, IntPtr lParam);
 
         [DllImport("user32.dll", SetLastError = true)]
@@ -623,10 +627,11 @@ namespace PersistentWindows.Common.WinApiBridge
 
     public class Kernel32
     {
-        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true, EntryPoint = "GetModuleHandleW")]
         public static extern IntPtr GetModuleHandle(string lpModuleName);
 
-        [DllImport("kernel32.dll", SetLastError = true)]
+        // 必須使用寬字元版本，否則含中文字的執行檔路徑會在 Big5 衝碼字元 (第二位元組為 0x5C) 處被截斷
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true, EntryPoint = "QueryFullProcessImageNameW")]
         public static extern bool QueryFullProcessImageName([In]IntPtr hProcess, [In]int dwFlags, [Out]StringBuilder lpExeName, ref int lpdwSize);
 
         [DllImport("kernel32.dll", SetLastError = true)]
@@ -634,6 +639,10 @@ namespace PersistentWindows.Common.WinApiBridge
 
         [DllImport("kernel32")]
         public static extern UInt64 GetTickCount64();
+
+        // 取得 OEM 主控台字碼頁 (繁體中文 Windows 為 950)，供批次檔以 cmd.exe 可讀的編碼寫出
+        [DllImport("kernel32.dll")]
+        public static extern int GetOEMCP();
 
         [DllImport("kernel32.dll", SetLastError = true)]
         public static extern IntPtr OpenProcess(
@@ -668,7 +677,7 @@ namespace PersistentWindows.Common.WinApiBridge
 
     public class Shell32
     {
-        [DllImport("Shell32.dll", CharSet = CharSet.Auto)]
+        [DllImport("Shell32.dll", CharSet = CharSet.Unicode, EntryPoint = "SHAppBarMessage")]
         public static extern UIntPtr SHAppBarMessage(int dwMessage, ref APP_BAR_DATA abd);
 
         public const int ABM_NEW = 0x00;
@@ -709,6 +718,39 @@ namespace PersistentWindows.Common.WinApiBridge
         [DllImport("shell32.dll")]
         public static extern int SHQueryUserNotificationState(
              out QUERY_USER_NOTIFICATION_STATE pquns);
+
+        public const int CSIDL_LOCAL_APPDATA = 0x001c;
+        public const int SHGFP_TYPE_CURRENT = 0;
+        public const int MAX_PATH = 260;
+
+        // 一律使用寬字元版本，避免含中文字的 AppData 路徑被 ANSI 轉碼破壞
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode, EntryPoint = "SHGetFolderPathW")]
+        public static extern int SHGetFolderPathW(IntPtr hwndOwner, int nFolder, IntPtr hToken, int dwFlags,
+            [Out] StringBuilder pszPath);
+
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode, EntryPoint = "ShellExecuteW")]
+        public static extern IntPtr ShellExecuteW(IntPtr hwnd, string lpOperation, string lpFile,
+            string lpParameters, string lpDirectory, int nShowCmd);
+
+        /// <summary>
+        /// 以寬字元 API 取得 %LOCALAPPDATA% 路徑，取得失敗時退回 .NET 內建方法。
+        /// </summary>
+        public static string GetLocalAppDataPathW()
+        {
+            try
+            {
+                var buffer = new StringBuilder(MAX_PATH);
+                int hr = SHGetFolderPathW(IntPtr.Zero, CSIDL_LOCAL_APPDATA, IntPtr.Zero, SHGFP_TYPE_CURRENT, buffer);
+                if (hr >= 0 && buffer.Length > 0)
+                    return buffer.ToString();
+            }
+            catch (Exception)
+            {
+                // 退回 .NET 內建方法
+            }
+
+            return Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        }
     }
 
 

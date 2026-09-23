@@ -2,7 +2,8 @@
 
 namespace PersistentWindows.Common.WinApiBridge
 {
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+    // 搭配 GetMonitorInfoW 使用，DeviceName 必須以寬字元配置
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     public struct MonitorInfo
     {
         // size of a device name string

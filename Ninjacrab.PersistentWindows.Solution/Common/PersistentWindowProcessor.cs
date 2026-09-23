@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
@@ -5250,11 +5250,11 @@ namespace PersistentWindows.Common
                                             dir = $"\"{dir}\"";
                                         }
 
-                                        File.WriteAllText(batFile, "start \"\" /B " + dir);
+                                        BatchFile.Write(batFile, "start \"\" /B " + dir);
                                     }
                                     else if (dir.Equals("This PC") || dir.Equals("Computer"))
                                     {
-                                        File.WriteAllText(batFile, "explorer /n, /select, %SystemDrive%");
+                                        BatchFile.Write(batFile, "explorer /n, /select, %SystemDrive%");
                                     }
                                     else
                                     {
@@ -5282,12 +5282,12 @@ namespace PersistentWindows.Common
                                             dir = $"\"{dir}\"";
                                         }
 
-                                        File.WriteAllText(batFile, "cd %userprofile%" + Environment.NewLine + "start \"\" " + dir);
+                                        BatchFile.Write(batFile, "cd %userprofile%" + Environment.NewLine + "start \"\" " + dir);
                                     }
                                 }
                                 else
                                 {
-                                    File.WriteAllText(batFile, "start \"\" /B " + processPath);
+                                    BatchFile.Write(batFile, "start \"\" /B " + processPath);
                                 }
 
                                 Process process = Process.Start("explorer.exe", batFile);

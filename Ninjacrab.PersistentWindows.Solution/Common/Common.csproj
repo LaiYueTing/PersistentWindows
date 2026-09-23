@@ -41,6 +41,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BatchFile.cs" />
     <Compile Include="DbKeySelect.cs">
       <SubType>Form</SubType>
     </Compile>
