@@ -68,12 +68,39 @@ namespace PersistentWindows.Common.Diagnostics
         }
 
         /// <summary>
+        /// 移除訊息開頭由 Format() 加上的「時間 :: 」前綴。
+        ///
+        /// 事件來源未註冊時（一般權限下的常態），Format() 會在每則訊息前面
+        /// 加上時間戳。記錄檔本身已經有獨立的時間欄位，若不移除就會重複顯示。
+        /// 只有在前綴確實能解析成日期時才移除，避免誤傷內容中的 "::"。
+        /// </summary>
+        public static string StripLeadingTimestamp(string message)
+        {
+            if (String.IsNullOrEmpty(message))
+                return String.Empty;
+
+            const string separator = " :: ";
+            int index = message.IndexOf(separator, StringComparison.Ordinal);
+            if (index <= 0 || index > 40)
+                return message;
+
+            DateTime parsed;
+            if (!DateTime.TryParse(message.Substring(0, index), out parsed))
+                return message;
+
+            return message.Substring(index + separator.Length);
+        }
+
+        /// <summary>
         /// 將一行訊息寫入記錄檔；尚未設定路徑時先暫存於記憶體。
         /// </summary>
         private static void WriteToFile(string kind, string message)
         {
+            string body = StripLeadingTimestamp(message ?? String.Empty)
+                .Replace("\r\n", " ").Replace("\n", " ").TrimEnd();
+
             string line = String.Format("{0:yyyy-MM-dd HH:mm:ss.fff}\t{1}\t{2}",
-                DateTime.Now, kind, (message ?? String.Empty).Replace("\r\n", " ").Replace("\n", " ").TrimEnd());
+                DateTime.Now, kind, body);
 
             lock (fileLock)
             {

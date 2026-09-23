@@ -91,7 +91,8 @@ namespace PersistentWindows.Common.Diagnostics
             {
                 Time = time,
                 EventId = parts[1] == "錯誤" ? LogRecord.EventIdError : LogRecord.EventIdEvent,
-                Message = parts[2],
+                // 舊版記錄檔的內容可能仍帶有重複的時間前綴，讀取時一併移除
+                Message = Log.StripLeadingTimestamp(parts[2]),
             };
         }
 
@@ -195,7 +196,7 @@ namespace PersistentWindows.Common.Diagnostics
                         {
                             Time = entry.TimeGenerated,
                             EventId = (int)(entry.InstanceId & 0xFFFF),
-                            Message = StripPrefix(entry.Message, productName),
+                            Message = Log.StripLeadingTimestamp(StripPrefix(entry.Message, productName)),
                         });
                     }
                 }
