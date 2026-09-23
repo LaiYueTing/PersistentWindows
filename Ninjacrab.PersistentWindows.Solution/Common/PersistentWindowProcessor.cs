@@ -114,6 +114,7 @@ namespace PersistentWindows.Common
         // restore control
         private Timer restoreTimer;
         private Timer restoreFinishedTimer;
+        private Timer restoreWatchdogTimer;
         public bool restoringFromMem = false; // automatic restore from memory or snapshot
         private bool restoreSingleWindow = false;
         public bool restoringFromDB = false; // manual restore from DB
@@ -139,6 +140,12 @@ namespace PersistentWindows.Common
         private Object dbLock = new object();
         private bool restoreHalted = false;
         public int haltRestore = 3000; //milliseconds to wait to finish current halted restore and restart next one
+
+        // 還原逾時看門狗：還原若卡在無回應的視窗上，系統匣圖示會一直停在忙碌（紅色）狀態，
+        // 擷取也會一直被停用。這裡設一個總時限，超過就強制結束還原週期並恢復圖示與擷取。
+        private const int RestoreWatchdogInterval = 2000; //檢查間隔
+        public int restoreTimeout = 90000; //還原總時限，0 表示停用看門狗
+        private DateTime restoreBusyStartTime = DateTime.MinValue;
         private const int immediateFinishRestore = 20;
         private HashSet<IntPtr> restoredWindows = new HashSet<IntPtr>();
         private HashSet<IntPtr> topmostWindowsFixed = new HashSet<IntPtr>();
@@ -799,6 +806,7 @@ namespace PersistentWindows.Common
             });
 
             restoreTimer = new Timer(TimerRestore);
+            restoreWatchdogTimer = new Timer(RestoreWatchdogCallback);
 
             restoreFinishedTimer = new Timer(state =>
             {
@@ -843,6 +851,7 @@ namespace PersistentWindows.Common
                         //restore icon to idle
                         hideRestoreTip();
                         iconBusy = false;
+                        DisarmRestoreWatchdog();
                     }
                     else
                     {
@@ -862,6 +871,7 @@ namespace PersistentWindows.Common
 
                     hideRestoreTip();
                     iconBusy = false;
+                    DisarmRestoreWatchdog();
 
                     Log.Event("Restore finished in pass {0} with {1} windows recovered for display setting {2}", restorePass, numWindowRestored, curDisplayKey);
                     sessionActive = true;
@@ -3909,6 +3919,109 @@ namespace PersistentWindows.Common
             ResetState();
         }
 
+        /// <summary>
+        /// 開始計算本次還原週期的耗時，並啟動逾時看門狗。
+        /// </summary>
+        private void ArmRestoreWatchdog()
+        {
+            restoreBusyStartTime = DateTime.Now;
+
+            if (restoreTimeout <= 0 || restoreWatchdogTimer == null)
+                return;
+
+            restoreWatchdogTimer.Change(RestoreWatchdogInterval, RestoreWatchdogInterval);
+        }
+
+        private void DisarmRestoreWatchdog()
+        {
+            restoreBusyStartTime = DateTime.MinValue;
+
+            if (restoreWatchdogTimer == null)
+                return;
+
+            restoreWatchdogTimer.Change(Timeout.Infinite, Timeout.Infinite);
+        }
+
+        private void RestoreWatchdogCallback(object state)
+        {
+            try
+            {
+                if (!iconBusy || restoreTimeout <= 0)
+                    return;
+
+                if (restoreBusyStartTime == DateTime.MinValue)
+                    return;
+
+                var elapsed = DateTime.Now - restoreBusyStartTime;
+                if (elapsed.TotalMilliseconds < restoreTimeout)
+                    return;
+
+                ForceFinishStuckRestore(elapsed);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex.ToString());
+            }
+        }
+
+        /// <summary>
+        /// 強制結束卡住的還原週期。
+        ///
+        /// 刻意不取得 restoreLock：還原正卡住時就是持有該鎖，取鎖只會讓看門狗一起卡死。
+        /// 這裡只清除使用者看得到的狀態（忙碌圖示與擷取停用），
+        /// 並讓進行中的還原迴圈自然收斂，不強制中斷執行緒。
+        /// </summary>
+        private void ForceFinishStuckRestore(TimeSpan elapsed)
+        {
+            var stuckWindows = new List<string>();
+            try
+            {
+                foreach (var hwnd in unResponsiveWindows)
+                    stuckWindows.Add(GetWindowTitle(hwnd));
+                foreach (var hwnd in slowResponseWindows)
+                {
+                    string title = GetWindowTitle(hwnd);
+                    if (!stuckWindows.Contains(title))
+                        stuckWindows.Add(title);
+                }
+            }
+            catch (Exception)
+            {
+                // 取視窗標題本身也可能對無回應視窗逾時，忽略即可
+            }
+
+            Log.Error("還原逾時 {0:F1} 秒（第 {1} 回合），強制結束並恢復圖示。無回應或緩慢的視窗：{2}",
+                elapsed.TotalSeconds, restoreTimes,
+                stuckWindows.Count == 0 ? "無法判定" : String.Join("、", stuckWindows.ToArray()));
+
+            // 讓進行中的還原迴圈在下一次檢查時走向結束，而不是再排下一回合
+            restoreTimes = MaxRestoreTimes;
+            restoreHalted = false;
+
+            // 清掉還原旗標，已排入的還原計時器會直接略過，避免還原週期反覆重新啟動造成圖示一直閃紅
+            restoringFromMem = false;
+            restoringFromDB = false;
+            autoInitialRestoreFromDB = false;
+            restoringSnapshot = false;
+
+            try
+            {
+                if (hideRestoreTip != null)
+                    hideRestoreTip();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex.ToString());
+            }
+
+            iconBusy = false;
+
+            // 還原被迫中止，重新開放擷取，否則視窗位置會從此不再被追蹤
+            sessionActive = true;
+
+            DisarmRestoreWatchdog();
+        }
+
         private void ResetState()
         {
             {
@@ -4596,6 +4709,7 @@ namespace PersistentWindows.Common
                     // fix issue 22, avoid frequent restore tip activation due to fast display setting switch
                     iconBusy = true;
                     showRestoreTip();
+                    ArmRestoreWatchdog();
                 }
 
                 // start of a new restore cycle: clear deferred-command state from any previously aborted cycle
@@ -6156,6 +6270,12 @@ namespace PersistentWindows.Common
                 foreach (var handle in this.winEventHooks)
                 {
                     User32.UnhookWinEvent(handle);
+                }
+
+                if (restoreWatchdogTimer != null)
+                {
+                    restoreWatchdogTimer.Dispose();
+                    restoreWatchdogTimer = null;
                 }
             }
         }

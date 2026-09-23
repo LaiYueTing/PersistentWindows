@@ -78,6 +78,7 @@ if not errorlevel 1 goto wait_to_finish";
             bool prompt_session_restore = false;
             int delay_auto_restore = 0;
             int halt_restore = 0; //seconds to wait before trying restore again, due to frequent monitor config changes
+            int restore_timeout = 0;
             string ignore_process = "";
             string care_process = "";
             string no_inherit_process = "";
@@ -138,6 +139,12 @@ if not errorlevel 1 goto wait_to_finish";
                 {
                     delay_auto_restore = 0;
                     pwp.UserForcedRestoreLatency = (Int32)(float.Parse(arg) * 1000);
+                    continue;
+                }
+                else if (restore_timeout != 0)
+                {
+                    restore_timeout = 0;
+                    pwp.restoreTimeout = (Int32)(float.Parse(arg) * 1000);
                     continue;
                 }
                 else if (debug_process != 0)
@@ -304,6 +311,9 @@ if not errorlevel 1 goto wait_to_finish";
                         break;
                     case "-delay_auto_restore":
                         delay_auto_restore = 1;
+                        break;
+                    case "-restore_timeout":
+                        restore_timeout = 1;
                         break;
                     case "-notification_on":
                     case "-notification=1":
