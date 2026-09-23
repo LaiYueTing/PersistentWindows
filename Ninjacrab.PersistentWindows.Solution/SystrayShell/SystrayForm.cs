@@ -22,6 +22,11 @@ namespace PersistentWindows.SystrayShell
         private bool pauseAutoRestore = false;
         public bool toggleIcon = false;
 
+        // 選單文字已在地化，因此另以旗標記錄狀態，避免比對顯示字串
+        private bool upgradeNoticeEnabled = true;
+        private bool upgradeAvailable = false;
+        private bool webCommanderEnabled = true;
+
         private int skipUpgradeCounter = 0;
         private bool initialCheckUpgrade = true;
         private bool pauseUpgradeCounter = false;
@@ -46,18 +51,26 @@ namespace PersistentWindows.SystrayShell
             InitializeComponent();
 
             if (File.Exists(Program.DisableUpgradeNotice))
-                upgradeNoticeMenuItem.Text = "Enable upgrade notice";
+            {
+                upgradeNoticeEnabled = false;
+                upgradeNoticeMenuItem.Text = "啟用升級通知(&G)";
+            }
             else if (!enable_upgrade_notice)
             {
                 File.Create(Program.DisableUpgradeNotice);
-                upgradeNoticeMenuItem.Text = "Enable upgrade notice";
+                upgradeNoticeEnabled = false;
+                upgradeNoticeMenuItem.Text = "啟用升級通知(&G)";
             }
             else
-                upgradeNoticeMenuItem.Text = "Disable upgrade notice";
+            {
+                upgradeNoticeEnabled = true;
+                upgradeNoticeMenuItem.Text = "停用升級通知(&G)";
+            }
 
             if (File.Exists(Program.DisableWebpageCommander))
             {
-                invokeWebCommander.Text = "Enable webpage commander";
+                webCommanderEnabled = false;
+                invokeWebCommander.Text = "啟用網頁指令視窗(&W)";
             }
 
             clickDelayTimer = new System.Timers.Timer(1000);
@@ -189,7 +202,7 @@ namespace PersistentWindows.SystrayShell
             else
                 restoreToolStripMenuItem.Image = Properties.Resources.question;
 
-            if (checkUpgrade && upgradeNoticeMenuItem.Text.Contains("Disable"))
+            if (checkUpgrade && upgradeNoticeEnabled && !upgradeAvailable)
             {
                 if (pauseUpgradeCounter)
                 {
@@ -275,8 +288,9 @@ namespace PersistentWindows.SystrayShell
             if (current_major < latest_major
                 || current_major == latest_major && current_minor < latest_minor)
             {
-                notifyIconMain.ShowBalloonTip(5000, $"{Application.ProductName} {latestVersion} upgrade is available", "The upgrade notice can be disabled in menu", ToolTipIcon.Info);
-                upgradeNoticeMenuItem.Text = $"Upgrade to {latestVersion}";
+                notifyIconMain.ShowBalloonTip(5000, $"{Application.ProductName} {latestVersion} 版本可供升級", "可在選單中停用升級通知", ToolTipIcon.Info);
+                upgradeAvailable = true;
+                upgradeNoticeMenuItem.Text = $"升級至 {latestVersion}(&G)";
 
                 if (!upgradeDownloaded.ContainsKey(latestVersion))
                 {
@@ -324,7 +338,7 @@ namespace PersistentWindows.SystrayShell
             process.PriorityClass = ProcessPriorityClass.High;
 
             Program.WriteDataDump();
-            Log.Event("Session exit");
+            Log.Event("工作階段結束");
 
             this.notifyIconMain.Visible = false;
             //this.notifyIconMain.Icon = null;
@@ -383,13 +397,13 @@ namespace PersistentWindows.SystrayShell
             {
                 Program.ResumeAutoRestore();
                 pauseAutoRestore = false;
-                pauseResumeToolStripMenuItem.Text = "Pause auto restore";
+                pauseResumeToolStripMenuItem.Text = "暫停自動還原(&U)";
             }
             else
             {
                 pauseAutoRestore = true;
                 Program.PauseAutoRestore();
-                pauseResumeToolStripMenuItem.Text = "Resume auto restore";
+                pauseResumeToolStripMenuItem.Text = "恢復自動還原(&U)";
             }
         }
 
@@ -397,10 +411,11 @@ namespace PersistentWindows.SystrayShell
         {
             if ((User32.GetKeyState(0x11) & 0x8000) != 0)
                 HotKeyForm.InvokeFromMenu();
-            else if (this.invokeWebCommander.Text.Contains("Disable"))
+            else if (webCommanderEnabled)
             {
                 File.Create(Program.DisableWebpageCommander);
-                this.invokeWebCommander.Text = "Enable webpage commander";
+                webCommanderEnabled = false;
+                this.invokeWebCommander.Text = "啟用網頁指令視窗(&W)";
                 HotKeyForm.Stop();
             }
             else
@@ -414,7 +429,8 @@ namespace PersistentWindows.SystrayShell
                     Log.Error(ex.ToString());
                 }
 
-                this.invokeWebCommander.Text = "Disable webpage commander";
+                webCommanderEnabled = true;
+                this.invokeWebCommander.Text = "停用網頁指令視窗(&W)";
                 HotKeyForm.Start(Program.hotkey);
             }
         }
@@ -425,7 +441,7 @@ namespace PersistentWindows.SystrayShell
             {
                 notifyIconMain.Icon = Program.IdleIcon;
                 toggleIcon = !toggleIcon;
-                toggleIconMenuItem.Text = "Try customized icon";
+                toggleIconMenuItem.Text = "試用自訂圖示(&I)";
             }
             else
             {
@@ -454,7 +470,7 @@ namespace PersistentWindows.SystrayShell
                             }
                         }
                         toggleIcon = !toggleIcon;
-                        toggleIconMenuItem.Text = "Disable customized icon";
+                        toggleIconMenuItem.Text = "停用自訂圖示(&I)";
                     }
                 }
             }
@@ -462,13 +478,14 @@ namespace PersistentWindows.SystrayShell
 
         private void PauseResumeUpgradeNotice(Object sender, EventArgs e)
         {
-            if (upgradeNoticeMenuItem.Text.Contains("Upgrade to"))
+            if (upgradeAvailable)
             {
                 Upgrade();
             }
-            else if (upgradeNoticeMenuItem.Text.Contains("Enable"))
+            else if (!upgradeNoticeEnabled)
             {
-                upgradeNoticeMenuItem.Text = "Disable upgrade notice";
+                upgradeNoticeEnabled = true;
+                upgradeNoticeMenuItem.Text = "停用升級通知(&G)";
                 CheckUpgradeSafe();
                 try
                 {
@@ -479,16 +496,22 @@ namespace PersistentWindows.SystrayShell
                     Log.Error(ex.ToString());
                 }
             }
-            else //menu is "Disable upgrade notice"
+            else //選單目前為「停用升級通知」
             {
                 File.Create(Program.DisableUpgradeNotice);
-                upgradeNoticeMenuItem.Text = "Enable upgrade notice";
+                upgradeNoticeEnabled = false;
+                upgradeNoticeMenuItem.Text = "啟用升級通知(&G)";
             }
+        }
+
+        private void HelpToolStripMenuItemClickHandler(object sender, EventArgs e)
+        {
+            Process.Start(Program.ProjectUrl + "/blob/master/Help.md");
         }
 
         private void AboutToolStripMenuItemClickHandler(object sender, EventArgs e)
         {
-            Process.Start(Program.ProjectUrl + "/blob/master/Help.md");
+            Program.ShowAboutBox();
         }
 
         protected override void SetVisibleCore(bool value)
@@ -542,7 +565,7 @@ namespace PersistentWindows.SystrayShell
                 Console.WriteLine("{0}", ms);
                 if (ms < 30 || ms > SystemInformation.DoubleClickTime / 2)
                 {
-                    Program.LogError($"ignore bogus double click {ms} ms");
+                    Program.LogError($"忽略異常的連按兩下 {ms} 毫秒");
                     return;
                 }
 

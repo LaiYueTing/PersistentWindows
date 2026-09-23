@@ -1,15 +1,15 @@
-$executablePath = $PSScriptRoot + "\PersistentWindows.exe"
+﻿$executablePath = $PSScriptRoot + "\PersistentWindows.exe"
 
-## create registry to run PersistentWindows.exe in high dpi aware mode
+## 移除讓 PersistentWindows.exe 以高 DPI 感知模式執行的註冊表設定
 Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers" -Name $executablePath
 
-## rename the task as you like
+## 可依需要自行修改工作名稱
 $taskName = "StartPersistentWindows" + $env:username
 $existingTask = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 
 if ($existingTask -ne $null) {
-    Write-Host "Remove existing task."
-	Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
+    Write-Host "移除既有的工作。"
+    Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
 }
 
 $app_path = $env:LOCALAPPDATA + "\PersistentWindows"

@@ -310,7 +310,7 @@ namespace PersistentWindows.Common
             if (e.Control || e.Alt)
                 return;
             */
-            if (e.KeyCode == (Keys)hotkey && e.Alt && !e.Control) 
+            if (e.KeyCode == (Keys)hotkey && e.Alt && !e.Control)
             {
                 //hotkey
                 return;
@@ -723,7 +723,7 @@ namespace PersistentWindows.Common
             {
                 User32.SetForegroundWindow(Handle);
                 //ResetCursorPos(true);
-            }    
+            }
             else if (tiny)
             {
                 //Visible = true; keep hiding hotkey window, let OS update cursor shape, and alive timer callback show correct hotkey window position
@@ -880,7 +880,7 @@ namespace PersistentWindows.Common
                     //yield focus
                     //User32.SetForegroundWindow(fgwnd);
                     Visible = false;
-                } 
+                }
                 else if (cursorPos.Y - rect.Top <= titleHeight * 2)
                 {
                     //avoid conflict with title bar
@@ -1062,7 +1062,7 @@ namespace PersistentWindows.Common
                         StartAliveTimer(9);
                         return;
                     }
-                } 
+                }
 
                 if (Visible)
                 {
@@ -1163,7 +1163,7 @@ namespace PersistentWindows.Common
             {
                 if (promptZkey)
                 {
-                    MessageBox.Show("You may also press Z key to toggle the size of webpage commander window",
+                    MessageBox.Show("也可以按下 Z 鍵切換網頁指令視窗的大小",
                         Application.ProductName,
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Information,

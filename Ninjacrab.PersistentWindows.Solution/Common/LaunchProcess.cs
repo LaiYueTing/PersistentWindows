@@ -16,9 +16,9 @@ namespace PersistentWindows.Common
 
             InitializeComponent();
 
-            // Creating and setting the label 
+            // Creating and setting the label
             Label process_name = new Label();
-            process_name.Font = new Font("Calibri", 13);
+            process_name.Font = UiFont.Get(13F);
             process_name.AutoSize = true;
             process_name.BorderStyle = BorderStyle.Fixed3D;
             process_name.Padding = new Padding(6);
@@ -30,7 +30,7 @@ namespace PersistentWindows.Common
             this.Controls.Add(process_name);
 
             Label window_title = new Label();
-            window_title.Font = new Font("Calibri", 13);
+            window_title.Font = UiFont.Get(13F);
             window_title.AutoSize = true;
             window_title.TextAlign = ContentAlignment.TopCenter;
             window_title.BorderStyle = BorderStyle.Fixed3D;

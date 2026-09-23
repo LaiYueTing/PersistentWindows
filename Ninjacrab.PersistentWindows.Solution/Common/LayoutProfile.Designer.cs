@@ -34,28 +34,29 @@ namespace PersistentWindows.Common
             this.SnapshotName = new System.Windows.Forms.TextBox();
             this.label1 = new System.Windows.Forms.Label();
             this.SuspendLayout();
-            // 
+            //
             // SnapshotName
-            // 
-            this.SnapshotName.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            //
+            this.SnapshotName.Font = UiFont.Get(12F);
             this.SnapshotName.Location = new System.Drawing.Point(230, 130);
             this.SnapshotName.MaxLength = 1;
             this.SnapshotName.Name = "SnapshotName";
             this.SnapshotName.Size = new System.Drawing.Size(45, 30);
             this.SnapshotName.TabIndex = 1;
             this.SnapshotName.TextChanged += new System.EventHandler(this.ProfileName_TextChanged);
-            // 
+            //
             // label1
-            // 
-            this.label1.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.label1.Location = new System.Drawing.Point(41, 79);
+            //
+            this.label1.Font = UiFont.Get(12F);
+            this.label1.Location = new System.Drawing.Point(48, 79);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(413, 25);
+            this.label1.Size = new System.Drawing.Size(413, 30);
+            this.label1.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.label1.TabIndex = 9;
-            this.label1.Text = "Enter one digit or a letter to name the snapshot";
-            // 
+            this.label1.Text = "請輸入一個數字或字母作為快照名稱";
+            //
             // LayoutProfile
-            // 
+            //
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Inherit;
             this.ClientSize = new System.Drawing.Size(510, 225);
             this.Controls.Add(this.label1);
@@ -66,7 +67,7 @@ namespace PersistentWindows.Common
             this.Name = "LayoutProfile";
             this.ShowInTaskbar = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "Enter the name of snapshot";
+            this.Text = "輸入快照名稱";
             this.Load += new System.EventHandler(this.LayoutProfile_Load);
             this.ResumeLayout(false);
             this.PerformLayout();

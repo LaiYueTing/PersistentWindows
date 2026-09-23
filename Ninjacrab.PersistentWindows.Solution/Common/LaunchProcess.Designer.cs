@@ -38,52 +38,52 @@ namespace PersistentWindows.Common
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.SuspendLayout();
-            // 
+            //
             // Yes
-            // 
+            //
             resources.ApplyResources(this.Yes, "Yes");
             this.Yes.Name = "Yes";
             this.Yes.UseVisualStyleBackColor = true;
             this.Yes.Click += new System.EventHandler(this.Yes_Click);
-            // 
+            //
             // No
-            // 
+            //
             resources.ApplyResources(this.No, "No");
             this.No.Name = "No";
             this.No.UseVisualStyleBackColor = true;
             this.No.Click += new System.EventHandler(this.No_Click);
-            // 
+            //
             // YesToAll
-            // 
+            //
             resources.ApplyResources(this.YesToAll, "YesToAll");
             this.YesToAll.Name = "YesToAll";
             this.YesToAll.UseVisualStyleBackColor = true;
             this.YesToAll.Click += new System.EventHandler(this.YesToAll_Click);
-            // 
+            //
             // NoToAll
-            // 
+            //
             resources.ApplyResources(this.NoToAll, "NoToAll");
             this.NoToAll.Name = "NoToAll";
             this.NoToAll.UseVisualStyleBackColor = true;
             this.NoToAll.Click += new System.EventHandler(this.NoToAll_Click);
-            // 
+            //
             // Notice
-            // 
+            //
             resources.ApplyResources(this.Notice, "Notice");
             this.Notice.Name = "Notice";
-            // 
+            //
             // label1
-            // 
+            //
             resources.ApplyResources(this.label1, "label1");
             this.label1.Name = "label1";
-            // 
+            //
             // label2
-            // 
+            //
             resources.ApplyResources(this.label2, "label2");
             this.label2.Name = "label2";
-            // 
+            //
             // LaunchProcess
-            // 
+            //
             this.AcceptButton = this.Yes;
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Inherit;
             resources.ApplyResources(this, "$this");

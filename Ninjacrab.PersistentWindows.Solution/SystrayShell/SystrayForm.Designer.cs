@@ -26,6 +26,7 @@ namespace PersistentWindows.SystrayShell
         public  ToolStripMenuItem toggleIconMenuItem;
         public  ToolStripMenuItem invokeWebCommander;
         public  ToolStripMenuItem upgradeNoticeMenuItem;
+        private ToolStripMenuItem helpToolStripMenuItem;
         private ToolStripMenuItem aboutToolStripMenuItem;
         private ToolStripMenuItem exitToolStripMenuItem;
         private ToolStripSeparator[] menuSeparators = new System.Windows.Forms.ToolStripSeparator[5];
@@ -55,6 +56,7 @@ namespace PersistentWindows.SystrayShell
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(SystrayForm));
             this.notifyIconMain = new System.Windows.Forms.NotifyIcon(this.components);
             this.contextMenuStripSysTray = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.helpToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.captureToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.restoreToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -82,7 +84,7 @@ namespace PersistentWindows.SystrayShell
             this.notifyIconMain.Icon = Program.IdleIcon;
             this.notifyIconMain.Text = $"{Application.ProductName} {Application.ProductVersion}";
             this.notifyIconMain.BalloonTipTitle = "";
-            this.notifyIconMain.BalloonTipText = "Please wait while restoring windows";
+            this.notifyIconMain.BalloonTipText = "正在還原視窗，請稍候 ...";
             this.notifyIconMain.BalloonTipIcon = ToolTipIcon.Info;
             if (!Program.Gui)
                 this.notifyIconMain.Visible = false;
@@ -114,65 +116,77 @@ namespace PersistentWindows.SystrayShell
                 this.invokeWebCommander,
                 this.menuSeparators[3],
                 this.upgradeNoticeMenuItem,
+                this.helpToolStripMenuItem,
                 this.aboutToolStripMenuItem,
                 this.menuSeparators[4],
                 this.exitToolStripMenuItem});
             this.contextMenuStripSysTray.Name = "contextMenuStripSysTray";
+            this.contextMenuStripSysTray.Font = PersistentWindows.Common.UiFont.Get(9F);
 
             // capture
             //
             this.captureToolStripMenuItem.Name = "capture";
-            this.captureToolStripMenuItem.Text = "Capture windows to disk";
+            this.captureToolStripMenuItem.Text = "擷取視窗佈局至硬碟(&C)";
             this.captureToolStripMenuItem.Click += new System.EventHandler(this.CaptureWindowToDisk);
 
             // restore
             //
             this.restoreToolStripMenuItem.Name = "restore";
-            this.restoreToolStripMenuItem.Text = "Restore windows from disk";
+            this.restoreToolStripMenuItem.Text = "從硬碟還原視窗佈局(&R)";
             this.restoreToolStripMenuItem.Click += new System.EventHandler(this.RestoreWindowFromDisk);
 
             // restore all minimized
             //
             this.restoreAllParkedMenuItem.Name = "restoreAllMinimized";
-            this.restoreAllParkedMenuItem.Text = "Restore all minimized windows";
+            this.restoreAllParkedMenuItem.Text = "還原所有最小化的視窗(&N)";
             this.restoreAllParkedMenuItem.Click += new System.EventHandler(this.RestoreAllParkedClickHandler);
 
             // capture snapshot
             //
             this.captureSnapshotMenuItem.Name = "capture snapshot";
-            this.captureSnapshotMenuItem.Text = "Capture snapshot";
+            this.captureSnapshotMenuItem.Text = "擷取快照(&P)";
             this.captureSnapshotMenuItem.Click += new System.EventHandler(this.CaptureSnapshot);
 
             // restore
             //
             this.restoreSnapshotMenuItem.Name = "restore snapshot";
-            this.restoreSnapshotMenuItem.Text = "Restore snapshot";
+            this.restoreSnapshotMenuItem.Text = "還原快照(&T)";
             this.restoreSnapshotMenuItem.Click += new System.EventHandler(this.RestoreSnapshot);
             this.restoreSnapshotMenuItem.Enabled = false;
 
             // suspend/resume auto restore
             //
             this.pauseResumeToolStripMenuItem.Name = "suspend/resume";
-            this.pauseResumeToolStripMenuItem.Text = "Pause auto restore";
+            this.pauseResumeToolStripMenuItem.Text = "暫停自動還原(&U)";
             this.pauseResumeToolStripMenuItem.Click += new System.EventHandler(this.PauseResumeAutoRestore);
 
             // toggle icon
             //
             this.toggleIconMenuItem.Name = "toggle icon";
-            this.toggleIconMenuItem.Text = "Try customized icon";
+            this.toggleIconMenuItem.Text = "試用自訂圖示(&I)";
             this.toggleIconMenuItem.Click += new System.EventHandler(this.ToggleIcon);
 
             // web commander
             this.invokeWebCommander.Name = "web commander on/off";
-            this.invokeWebCommander.Text = "Disable webpage commander";
+            this.invokeWebCommander.Text = "停用網頁指令視窗(&W)";
             this.invokeWebCommander.Click += new System.EventHandler(this.WebCommander);
             if (!Program.hotkey_window)
                 this.invokeWebCommander.Visible = false;
             //
             // aboutToolStripMenuItem
             //
+            //
+            // helpToolStripMenuItem
+            //
+            this.helpToolStripMenuItem.Name = "helpToolStripMenuItem";
+            this.helpToolStripMenuItem.Text = "說明(&H)";
+            this.helpToolStripMenuItem.Click += new System.EventHandler(this.HelpToolStripMenuItemClickHandler);
+
+            //
+            // aboutToolStripMenuItem
+            //
             this.aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
-            this.aboutToolStripMenuItem.Text = "&Help";
+            this.aboutToolStripMenuItem.Text = "關於(&A) ...";
             this.aboutToolStripMenuItem.Click += new System.EventHandler(this.AboutToolStripMenuItemClickHandler);
 
             // pause/resume upgrade notice
@@ -183,7 +197,7 @@ namespace PersistentWindows.SystrayShell
             // exitToolStripMenuItem
             //
             this.exitToolStripMenuItem.Name = "exitToolStripMenuItem";
-            this.exitToolStripMenuItem.Text = "&Exit";
+            this.exitToolStripMenuItem.Text = "結束(&X)";
             this.exitToolStripMenuItem.Click += new System.EventHandler(this.ExitToolStripMenuItemClickHandler);
             //
             // SystrayForm

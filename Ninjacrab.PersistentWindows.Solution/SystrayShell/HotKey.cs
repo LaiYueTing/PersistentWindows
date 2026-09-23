@@ -50,7 +50,7 @@ namespace PersistentWindows.SystrayShell
         public HotKeyForm(uint hotkey)
         {
             //InitializeComponent();
-            var r = User32.RegisterHotKey(this.Handle, 0, (int)User32.KeyModifier.Alt, hotkey); // Register Alt + W 
+            var r = User32.RegisterHotKey(this.Handle, 0, (int)User32.KeyModifier.Alt, hotkey); // Register Alt + W
         }
 
         protected override void WndProc(ref Message m)
@@ -79,7 +79,7 @@ namespace PersistentWindows.SystrayShell
                         string webpage_commander_notification = Path.Combine(Program.AppdataFolder, "webpage_commander_notification");
                         if (File.Exists(webpage_commander_notification))
                         {
-                            Program.systrayForm.notifyIconMain.ShowBalloonTip(8000, "webpage commander is invoked via hotkey", "Press the hotkey (Alt + W) again to revoke", ToolTipIcon.Info);
+                            Program.systrayForm.notifyIconMain.ShowBalloonTip(8000, "已透過快速鍵開啟網頁指令視窗", "再按一次快速鍵 (Alt + W) 即可關閉", ToolTipIcon.Info);
                         }
                         else
                         {
@@ -95,7 +95,7 @@ namespace PersistentWindows.SystrayShell
                             catch (Exception ex)
                             {
                                 Log.Error(ex.ToString());
-                                Program.systrayForm.notifyIconMain.ShowBalloonTip(8000, "webpage commander is invoked via hotkey", "Press the hotkey (Alt + W) again to revoke", ToolTipIcon.Info);
+                                Program.systrayForm.notifyIconMain.ShowBalloonTip(8000, "已透過快速鍵開啟網頁指令視窗", "再按一次快速鍵 (Alt + W) 即可關閉", ToolTipIcon.Info);
                                 Process.Start(Program.ProjectUrl + "/blob/master/webpage_commander.md");
                             }
                         }
@@ -107,7 +107,7 @@ namespace PersistentWindows.SystrayShell
             else if (m.Msg == 0x0010 || m.Msg == 0x0002)
             {
                 r = User32.UnregisterHotKey(this.Handle, 0);
-                Log.Event($"unregister hotkey {r}");
+                Log.Event($"取消註冊快速鍵 {r}");
             }
 
             base.WndProc(ref m);
@@ -119,7 +119,7 @@ namespace PersistentWindows.SystrayShell
             Program.HideRestoreTip(); //show icon
             hkwin.HotKeyPressed(from_menu: true);
         }
-        
+
         protected override void SetVisibleCore(bool value)
         {
             // Ensure the window never becomes visible

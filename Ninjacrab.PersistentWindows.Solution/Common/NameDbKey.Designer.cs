@@ -33,40 +33,41 @@ namespace PersistentWindows.Common
             this.textBox1 = new System.Windows.Forms.TextBox();
             this.button1 = new System.Windows.Forms.Button();
             this.SuspendLayout();
-            // 
+            //
             // hint
-            // 
-            this.hint.AutoSize = true;
-            this.hint.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.hint.Location = new System.Drawing.Point(186, 99);
+            //
+            this.hint.AutoSize = false;
+            this.hint.Font = UiFont.Get(12F);
+            this.hint.Location = new System.Drawing.Point(187, 99);
             this.hint.Name = "hint";
-            this.hint.Size = new System.Drawing.Size(235, 25);
+            this.hint.Size = new System.Drawing.Size(234, 30);
+            this.hint.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.hint.TabIndex = 0;
-            this.hint.Text = "Enter the name of capture";
+            this.hint.Text = "請輸入擷取名稱";
             this.hint.Click += new System.EventHandler(this.hint_Click);
-            // 
+            //
             // textBox1
-            // 
-            this.textBox1.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            //
+            this.textBox1.Font = UiFont.Get(12F);
             this.textBox1.Location = new System.Drawing.Point(187, 143);
             this.textBox1.Name = "textBox1";
             this.textBox1.Size = new System.Drawing.Size(234, 30);
             this.textBox1.TabIndex = 1;
             this.textBox1.TextChanged += new System.EventHandler(this.textBox1_TextChanged);
-            // 
+            //
             // button1
-            // 
-            this.button1.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.button1.Location = new System.Drawing.Point(268, 208);
+            //
+            this.button1.Font = UiFont.Get(12F);
+            this.button1.Location = new System.Drawing.Point(254, 208);
             this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(62, 36);
+            this.button1.Size = new System.Drawing.Size(100, 36);
             this.button1.TabIndex = 2;
-            this.button1.Text = "OK";
+            this.button1.Text = "確定(&O)";
             this.button1.UseVisualStyleBackColor = true;
             this.button1.Click += new System.EventHandler(this.button1_Click);
-            // 
+            //
             // NameDbEntry
-            // 
+            //
             this.AcceptButton = this.button1;
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Inherit;
             this.ClientSize = new System.Drawing.Size(609, 300);
@@ -75,7 +76,7 @@ namespace PersistentWindows.Common
             this.Controls.Add(this.hint);
             this.Name = "NameDbEntry";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "Enter the name of capture on disk";
+            this.Text = "輸入硬碟擷取名稱";
             this.ResumeLayout(false);
             this.PerformLayout();
 

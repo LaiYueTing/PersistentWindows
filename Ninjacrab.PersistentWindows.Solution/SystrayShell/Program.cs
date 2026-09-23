@@ -15,8 +15,12 @@ namespace PersistentWindows.SystrayShell
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
-        public static readonly string ProjectUrl = "https://www.github.com/kangyu-california/PersistentWindows";
-        public static readonly string Contributors = $@"{ProjectUrl}/graphs/contributors";
+        // 指向本繁體中文分支：自動升級會從這裡下載並覆蓋安裝目錄，
+        // 若沿用上游位址，中文版會在上游發佈新版時被英文版自動覆寫；
+        // 說明選單開啟的 Help.md 也一併指向本分支的繁體中文版本。
+        public static readonly string ProjectUrl = "https://www.github.com/LaiYueTing/PersistentWindows";
+        public static readonly string UpstreamProjectUrl = "https://www.github.com/kangyu-california/PersistentWindows";
+        public static readonly string Contributors = $@"{UpstreamProjectUrl}/graphs/contributors";
         public static System.Drawing.Icon IdleIcon = null;
         public static System.Drawing.Icon BusyIcon = null;
         public static System.Drawing.Icon UpdateIcon = null;
@@ -569,7 +573,7 @@ if not errorlevel 1 goto wait_to_finish";
             }
             catch (Exception )
             {
-                Log.Error("taskbar not ready, restart PersistentWindows");
+                Log.Error("工作列尚未就緒，重新啟動 PersistentWindows");
             }
 
             Restart(1);
@@ -592,7 +596,7 @@ if not errorlevel 1 goto wait_to_finish";
             }
             p.Start();
 
-            Log.Error("program restarted");
+            Log.Error("程式已重新啟動");
         }
 
         public static void ShowRestoreTip()
@@ -682,7 +686,7 @@ if not errorlevel 1 goto wait_to_finish";
                 {
                     char c = SnapshotIdToChar(id);
                     if (prompt)
-                        systrayForm.notifyIconMain.ShowBalloonTip(5000, $"snapshot '{c}' is captured", $"click icon then immediately press key '{c}' to restore the snapshot", ToolTipIcon.Info);
+                        systrayForm.notifyIconMain.ShowBalloonTip(5000, $"已擷取快照「{c}」", $"點選系統匣圖示後立即按下按鍵「{c}」即可還原此快照", ToolTipIcon.Info);
                 }
 
                 EnableRestoreSnapshotMenu(true);
@@ -848,6 +852,14 @@ if not errorlevel 1 goto wait_to_finish";
         static public void RestoreSnapshot(int id)
         {
             pwp.RestoreSnapshot(id);
+        }
+
+        static public void ShowAboutBox()
+        {
+            using (var dlg = new SplashForm(aboutMode: true))
+            {
+                dlg.ShowDialog();
+            }
         }
 
         static public void FgWindowToBottom()
