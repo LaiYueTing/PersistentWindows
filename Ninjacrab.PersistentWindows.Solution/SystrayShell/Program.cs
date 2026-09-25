@@ -353,7 +353,7 @@ if not errorlevel 1 goto wait_to_finish";
                         break;
                     case "-auto_restore_new_display_session_from_db=0":
                         pwp.autoRestoreLiveWindowsFromDb = false;
-                        Log.Error("新工作階段已關閉從資料庫自動還原");
+                        Log.Event("新工作階段已關閉從資料庫自動還原");
                         break;
                     case "-invoke_multi_window_process_only_once=0":
                         launch_once_per_process_id = false;
@@ -609,7 +609,7 @@ if not errorlevel 1 goto wait_to_finish";
             }
             p.Start();
 
-            Log.Error("程式已重新啟動");
+            Log.Event("程式已重新啟動");
         }
 
         public static void ShowRestoreTip()

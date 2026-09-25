@@ -368,7 +368,7 @@ namespace PersistentWindows.Common
                 {
                     var dm = deadApps[display_config][oldest_window].LastOrDefault<ApplicationDisplayMetrics>();
                     if (dm != null)
-                        Log.Error($"移除舊記錄 {dm.Title}");
+                        Log.Info($"移除舊記錄 {dm.Title}");
                     deadApps[display_config].Remove(oldest_window);
 
                     found_old_record = deadApps[display_config].Count > 0;
@@ -639,7 +639,7 @@ namespace PersistentWindows.Common
                         RestoreApplicationsOnCurrentDisplays(curDisplayKey, hwnd, t);
                         restoringFromMem = false;
 
-                        Log.Event("已交換視窗位置");
+                        Log.Info("已交換視窗位置");
                     }
                 }
                 else
@@ -838,7 +838,7 @@ namespace PersistentWindows.Common
                     restoreHalted = false;
                     topmostWindowsFixed.Clear();
 
-                    Log.Error("已中止還原 {0}", displayKey);
+                    Log.Event("已中止還原 {0}", displayKey);
 
                     curDisplayKey = displayKey;
                     if (fullScreenGamingWindows.Contains(foreGroundWindow) || !normalSessions.Contains(curDisplayKey))
@@ -1991,7 +1991,7 @@ namespace PersistentWindows.Common
             {
                 return false;
             }
-            Log.Error($"左上角 {topLeft} 位於畫面之外");
+            Log.Info($"左上角 {topLeft} 位於畫面之外");
 
             POINT topRight = new POINT(rect.Left + rect.Width - MinSize, rect.Top + MinSize);
             if (User32.MonitorFromPoint(topRight, User32.MONITOR_DEFAULTTONULL) != IntPtr.Zero)
@@ -1999,7 +1999,7 @@ namespace PersistentWindows.Common
                 return false;
             }
 
-            Log.Error($"右上角 {topRight} 位於畫面之外");
+            Log.Info($"右上角 {topRight} 位於畫面之外");
             return true;
         }
 
@@ -2016,7 +2016,7 @@ namespace PersistentWindows.Common
 
             bool offscreen = IsRectOffScreen(rect);
             if (offscreen)
-                Log.Error("{0} 位於畫面之外，Rect = {1}", GetWindowTitle(hwnd), rect.ToString());
+                Log.Info("{0} 位於畫面之外，Rect = {1}", GetWindowTitle(hwnd), rect.ToString());
 
             return offscreen;
         }
@@ -2040,7 +2040,7 @@ namespace PersistentWindows.Common
 
             User32.MoveWindow(hwnd, r.Left, r.Top, r.Width, r.Height, true);
             User32.SetForegroundWindow(hwnd);
-            Log.Error("還原關閉前的最後位置「{0}」", GetWindowTitle(hwnd));
+            Log.Info("還原關閉前的最後位置「{0}」", GetWindowTitle(hwnd));
 
             return true;
         }
@@ -2054,7 +2054,7 @@ namespace PersistentWindows.Common
             var r = d.ScreenPosition;
             User32.MoveWindow(hwnd, r.Left, r.Top, r.Width, r.Height, true);
             User32.SetForegroundWindow(hwnd);
-            Log.Error("還原最後位置「{0}」", GetWindowTitle(hwnd));
+            Log.Info("還原最後位置「{0}」", GetWindowTitle(hwnd));
         }
 
         private void ResolveWindowHandleCollision(IntPtr hwnd)
@@ -2114,7 +2114,7 @@ namespace PersistentWindows.Common
 
             if (found_conflict)
             {
-                Log.Error($"已解決 {process_name} 存活記錄與失效記錄之間的視窗控制代碼衝突 {fakeHwnd}");
+                Log.Info($"已解決 {process_name} 存活記錄與失效記錄之間的視窗控制代碼衝突 {fakeHwnd}");
                 fakeHwnd++;
             }
         }
@@ -2403,7 +2403,7 @@ namespace PersistentWindows.Common
 
                 if (diff_size <= MaxDiffPos)
                 {
-                    Log.Event($"以位置差異 {diff_size} 比對視窗");
+                    Log.Info($"以位置差異 {diff_size} 比對視窗");
                     return similar_pos_hid;
                 }
 
@@ -2461,7 +2461,7 @@ namespace PersistentWindows.Common
             var displayKey = GetDisplayKey();
             if (!normalSessions.Contains(displayKey))
             {
-                Log.Error("避免還原隱藏的視窗「{0}」", GetWindowTitle(hwnd));
+                Log.Info("避免還原隱藏的視窗「{0}」", GetWindowTitle(hwnd));
                 return;
             }
 
@@ -2485,7 +2485,7 @@ namespace PersistentWindows.Common
             else if (!IsCoreUiWindow(hwnd))
             {
                 User32.MoveWindow(hwnd, rectDesk.Left + 100, rectDesk.Top + 100, rect.Width, rect.Height, true);
-                Log.Error("自動修正隱藏的視窗「{0}」", GetWindowTitle(hwnd));
+                Log.Info("自動修正隱藏的視窗「{0}」", GetWindowTitle(hwnd));
             }
         }
 
@@ -2621,7 +2621,7 @@ namespace PersistentWindows.Common
                             return;
                         }
 
-                        Log.Error("已移除不合格的擷取資料");
+                        Log.Info("已移除不合格的擷取資料");
 
                         prevDisplayMetrics = lastMetrics;
                     }
@@ -2650,8 +2650,8 @@ namespace PersistentWindows.Common
                                || prevDisplayMetrics.WindowPlacement.ShowCmd == ShowWindowCommands.Minimize
                                || target_rect.Left <= -25600)
                             {
-                                Log.Error("沒有合格的位置資料可還原最小化視窗「{0}」", GetWindowTitle(hwnd));
-                                Log.Error("{0}", prevDisplayMetrics);
+                                Log.Info("沒有合格的位置資料可還原最小化視窗「{0}」", GetWindowTitle(hwnd));
+                                Log.Info("{0}", prevDisplayMetrics);
                                 return; // captured without previous history info, let OS handle it
                             }
 
@@ -2677,7 +2677,7 @@ namespace PersistentWindows.Common
                                         placement.ShowCmd = ShowWindowCommands.ShowNoActivate;
                                         User32.SetWindowPlacement(hwnd, ref placement);
                                         placement.ShowCmd = ShowWindowCommands.Maximize;
-                                        Log.Error("預先還原最小化的最大化視窗「{0}」", GetWindowTitle(hwnd));
+                                        Log.Info("預先還原最小化的最大化視窗「{0}」", GetWindowTitle(hwnd));
                                     }
                                     User32.SetWindowPlacement(hwnd, ref placement);
                                     // SetWindowPlacement with NormalPosition usually positions the window correctly
@@ -2690,7 +2690,7 @@ namespace PersistentWindows.Common
                                     User32.GetWindowRect(hwnd, ref actualRect);
                                     if (!actualRect.Equals(target_rect))
                                         User32.MoveWindow(hwnd, target_rect.Left, target_rect.Top, target_rect.Width, target_rect.Height, true);
-                                    Log.Error("還原最小化視窗「{0}」", GetWindowTitle(hwnd));
+                                    Log.Info("還原最小化視窗「{0}」", GetWindowTitle(hwnd));
                                     return;
                                 }
                             }
@@ -2701,7 +2701,7 @@ namespace PersistentWindows.Common
                             if (IsOffScreen(hwnd))
                             {
                                 CenterWindow(hwnd);
-                                Log.Error("修正隱藏的視窗「{0}」", GetWindowTitle(hwnd));
+                                Log.Info("修正隱藏的視窗「{0}」", GetWindowTitle(hwnd));
                             }
                         }
                     }
@@ -2874,7 +2874,7 @@ namespace PersistentWindows.Common
                 noRestoreWindows.Remove(hwnd);
                 if (debugWindows.Contains(hwnd))
                 {
-                    Log.Event($"視窗已關閉 {windowTitle[hwnd]}");
+                    Log.Info($"視窗已關閉 {windowTitle[hwnd]}");
                     debugWindows.Remove(hwnd);
                 }
                 if (noinheritWindows.Contains(hwnd))
@@ -2910,7 +2910,7 @@ namespace PersistentWindows.Common
                         {
                             if (dm.SnapShotFlags == 0 && monitorApplications[display_config][hwnd].Count > 1)
                             {
-                                Log.Error("視窗關閉時捨棄擷取資料 {0}", windowTitle[hwnd]);
+                                Log.Info("視窗關閉時捨棄擷取資料 {0}", windowTitle[hwnd]);
                                 monitorApplications[display_config][hwnd].Remove(dm);
                                 dm = monitorApplications[display_config][hwnd].Last();
                             }
@@ -2980,7 +2980,7 @@ namespace PersistentWindows.Common
             {
                 if (debugWindows.Contains(hwnd))
                 {
-                    Log.Event("收到 WinEvent {0}「{1}」{2:x4}", eventType, GetWindowTitle(hwnd), hwnd.ToInt32());
+                    Log.Info("收到 WinEvent {0}「{1}」{2:x4}", eventType, GetWindowTitle(hwnd), hwnd.ToInt32());
 
                 #if DEBUG
                     RECT screenPosition = new RECT();
@@ -3192,7 +3192,7 @@ namespace PersistentWindows.Common
                                 var diff = now.Subtract(lastUnminimizeTime);
                                 if (diff.TotalMilliseconds < 200)
                                 {
-                                    Log.Error($"視窗「{title}」被 tidytab 隱藏");
+                                    Log.Info($"視窗「{title}」被 tidytab 隱藏");
                                     tidyTabWindows.Add(hwnd);
                                     if (lastUnminimizeWindow != IntPtr.Zero)
                                         tidyTabWindows.Add(lastUnminimizeWindow);
@@ -3255,7 +3255,7 @@ namespace PersistentWindows.Common
                     {
                         if ((snapshot_flags | acc_flags) == acc_flags)
                         {
-                            Log.Event($"修剪 {windowTitle[hwnd]} 多餘的快照記錄");
+                            Log.Info($"修剪 {windowTitle[hwnd]} 多餘的快照記錄");
                             monitorApplications[displayKey][hwnd].RemoveAt(i);
                         }
                         acc_flags |= snapshot_flags;
@@ -3310,7 +3310,7 @@ namespace PersistentWindows.Common
 
             if (restoringSnapshot)
             {
-                Log.Error("等待快照 {0} 還原完成", snapshotId);
+                Log.Info("等待快照 {0} 還原完成", snapshotId);
                 return false;
             }
 
@@ -3348,7 +3348,7 @@ namespace PersistentWindows.Common
         {
             if (restoringSnapshot)
             {
-                Log.Error("等待快照 {0} 還原完成", snapshotId);
+                Log.Info("等待快照 {0} 還原完成", snapshotId);
                 return;
             }
 
@@ -3471,7 +3471,7 @@ namespace PersistentWindows.Common
                 | SetWindowPosFlags.IgnoreResize
             );
 
-            Log.Error("修正最上層視窗 {0} {1}", GetWindowTitle(hWnd), ok.ToString());
+            Log.Info("修正最上層視窗 {0} {1}", GetWindowTitle(hWnd), ok.ToString());
 
             if (IsWindowTopMost(hWnd))
             {
@@ -3482,7 +3482,7 @@ namespace PersistentWindows.Common
                     | SetWindowPosFlags.IgnoreMove
                     | SetWindowPosFlags.IgnoreResize
                 );
-                Log.Error("第二次嘗試修正最上層視窗 {0} {1}", GetWindowTitle(hWnd), ok.ToString());
+                Log.Info("第二次嘗試修正最上層視窗 {0} {1}", GetWindowTitle(hWnd), ok.ToString());
             }
 
             return ok;
@@ -3593,7 +3593,7 @@ namespace PersistentWindows.Common
                 | SetWindowPosFlags.IgnoreMove
                 | SetWindowPosFlags.IgnoreResize
             );
-            Log.Event("將前景視窗 {0} 移至最下層", GetWindowTitle(hwnd));
+            Log.Info("將前景視窗 {0} 移至最下層", GetWindowTitle(hwnd));
         }
 
         public void SwitchForeBackground(IntPtr hwnd, bool strict_dps_check = true, bool toForeground=false, bool updateBackgroundPos=false)
@@ -3774,11 +3774,11 @@ namespace PersistentWindows.Common
                         curDisplayMetrics.ScreenPosition.ToString(),
                         curDisplayMetrics
                         );
-                    Log.Event(log);
+                    Log.Info(log);
 
                     string log2 = string.Format("    WindowPlacement.NormalPosition 位於 {0}",
                         curDisplayMetrics.WindowPlacement.NormalPosition.ToString());
-                    Log.Event(log2);
+                    Log.Info(log2);
                 }
 
                 monitorApplications[displayKey][hWnd].Add(curDisplayMetrics);
@@ -4092,7 +4092,7 @@ namespace PersistentWindows.Common
                     if (snapshotTakenTime[curDisplayKey].ContainsKey(MaxSnapshots + 1))
                     {
                         snapshotTakenTime[curDisplayKey][MaxSnapshots] = snapshotTakenTime[curDisplayKey][MaxSnapshots + 1];
-                        Log.Error("復原 {0} 於 {1} 的擷取資料", curDisplayKey, lastCaptureTime);
+                        Log.Info("復原 {0} 於 {1} 的擷取資料", curDisplayKey, lastCaptureTime);
                     }
                 }
             }
@@ -4217,7 +4217,7 @@ namespace PersistentWindows.Common
                 }
                 else
                 {
-                    Log.Error("拒絕過期的擷取要求 {0}", displayKey);
+                    Log.Info("拒絕過期的擷取要求 {0}", displayKey);
                 }
             }
         }
@@ -4326,9 +4326,9 @@ namespace PersistentWindows.Common
                 if (hwnd != kid && prevDisplayMetrics != null)
                 {
                     if (prevDisplayMetrics.Title != curDisplayMetrics.Title)
-                        Log.Error($"{hwnd.ToString("X")} 沿用已關閉視窗「{prevDisplayMetrics.Title}」的位置資料，標題已改為「{curDisplayMetrics.Title}」{prevDisplayMetrics.HWnd.ToString("X")}");
+                        Log.Info($"{hwnd.ToString("X")} 沿用已關閉視窗「{prevDisplayMetrics.Title}」的位置資料，標題已改為「{curDisplayMetrics.Title}」{prevDisplayMetrics.HWnd.ToString("X")}");
                     else
-                        Log.Error($"{hwnd.ToString("X")} 沿用已關閉視窗「{prevDisplayMetrics.Title}」的位置資料 {prevDisplayMetrics.HWnd.ToString("X")}");
+                        Log.Info($"{hwnd.ToString("X")} 沿用已關閉視窗「{prevDisplayMetrics.Title}」的位置資料 {prevDisplayMetrics.HWnd.ToString("X")}");
 
                     if (dualPosSwitchWindows.Contains(kid))
                     {
@@ -4339,7 +4339,7 @@ namespace PersistentWindows.Common
                     ResolveWindowHandleCollision(hwnd);
                 }
                 else
-                    Log.Error($"{hwnd.ToString("X")} 沿用現有視窗 0x{kid.ToString("X")} 的位置資料，套用於「{curDisplayMetrics.Title}」");
+                    Log.Info($"{hwnd.ToString("X")} 沿用現有視窗 0x{kid.ToString("X")} 的位置資料，套用於「{curDisplayMetrics.Title}」");
 
                 if (initialized && autoRestoreNewWindowToLastCapture)
                 {
@@ -4348,7 +4348,7 @@ namespace PersistentWindows.Common
                         // Don't restore to an off-screen position from a killed window
                         if (IsRectOffScreen(prevDisplayMetrics.ScreenPosition))
                         {
-                            Log.Error($"略過沿用畫面外的位置 {GetWindowTitle(hwnd)}");
+                            Log.Info($"略過沿用畫面外的位置 {GetWindowTitle(hwnd)}");
                         }
                         else
                         {
@@ -4574,7 +4574,7 @@ namespace PersistentWindows.Common
                 if (prevDisplayMetrics.ProcessId != curDisplayMetrics.ProcessId
                     && prevDisplayMetrics.ClassName == curDisplayMetrics.ClassName)
                 {
-                    Log.Error("標題為 {0}、{1} 的視窗，行程由 {2} 變更為 {3}",
+                    Log.Info("標題為 {0}、{1} 的視窗，行程由 {2} 變更為 {3}",
                         GetWindowTitle(hwnd), curDisplayMetrics.Title,
                         prevDisplayMetrics.ProcessId, curDisplayMetrics.ProcessId
                         );
@@ -4609,7 +4609,7 @@ namespace PersistentWindows.Common
                 {
                     if (sessionActive)
                     {
-                        //Log.Error("拒絕最小化視窗的移動 {0}", GetWindowTitle(hwnd));
+                        //Log.Info("拒絕最小化視窗的移動 {0}", GetWindowTitle(hwnd));
                         return false; //do not capture unexpected minimized window movement (by the app or OS)
                     }
 
@@ -4637,7 +4637,7 @@ namespace PersistentWindows.Common
                     if (IsScaleFactorChanged(prevDisplayMetrics.ScreenPosition.Width, prevDisplayMetrics.ScreenPosition.Height,
                             curDisplayMetrics.ScreenPosition.Width, curDisplayMetrics.ScreenPosition.Height))
                     {
-                        Log.Error($"拒絕 {GetWindowTitle(hwnd)} 非預期的縮放比例變更");
+                        Log.Info($"拒絕 {GetWindowTitle(hwnd)} 非預期的縮放比例變更");
                         return false;
                     }
                     moved = true;
@@ -4836,14 +4836,14 @@ namespace PersistentWindows.Common
                 style = User32.GetWindowLong(hwnd, User32.GWL_STYLE);
                 if ((style & (long)WindowStyleFlags.CAPTION) == 0L)
                 {
-                    Log.Error("全螢幕視窗 {0} 不需要還原", GetWindowTitle(hwnd));
+                    Log.Info("全螢幕視窗 {0} 不需要還原", GetWindowTitle(hwnd));
                     return;
                 }
                 /*
                 style |= (long)WindowStyleFlags.CAPTION;
                 User32.SetWindowLong(hwnd, User32.GWL_STYLE, style);
                 User32.ShowWindow(hwnd, User32.SW_RESTORE);
-                Log.Error("還原 {0} 的標題列樣式", GetWindowTitle(hwnd));
+                Log.Info("還原 {0} 的標題列樣式", GetWindowTitle(hwnd));
                 */
             }
 
@@ -4862,9 +4862,9 @@ namespace PersistentWindows.Common
 
                 if (wrong_screen)
                 {
-                    Log.Error($"目標全螢幕區域 {target_rect}");
+                    Log.Info($"目標全螢幕區域 {target_rect}");
                     User32.MoveWindow(hwnd, target_rect.Left, target_rect.Top, target_rect.Width, target_rect.Height, true);
-                    Log.Error("修正 {0} 所在的錯誤螢幕", GetWindowTitle(hwnd));
+                    Log.Info("修正 {0} 所在的錯誤螢幕", GetWindowTitle(hwnd));
                 }
             }
 
@@ -4881,7 +4881,7 @@ namespace PersistentWindows.Common
             Thread.Sleep(double_clck_interval);
             User32.mouse_event(MouseAction.MOUSEEVENTF_LEFTDOWN | MouseAction.MOUSEEVENTF_LEFTUP,
                 0, 0, 0, UIntPtr.Zero);
-            Log.Error("還原全螢幕視窗 {0}", GetWindowTitle(hwnd));
+            Log.Info("還原全螢幕視窗 {0}", GetWindowTitle(hwnd));
 
             Thread.Sleep(3 * double_clck_interval);
 
@@ -4899,7 +4899,7 @@ namespace PersistentWindows.Common
             User32.mouse_event(MouseAction.MOUSEEVENTF_LEFTDOWN | MouseAction.MOUSEEVENTF_LEFTUP,
                 0, 0, 0, UIntPtr.Zero);
 
-            Log.Error("重複還原全螢幕視窗 {0}", GetWindowTitle(hwnd));
+            Log.Info("重複還原全螢幕視窗 {0}", GetWindowTitle(hwnd));
 
             Thread.Sleep(3 * double_clck_interval);
             style = User32.GetWindowLong(hwnd, User32.GWL_STYLE);
@@ -4929,7 +4929,7 @@ namespace PersistentWindows.Common
                         && Math.Abs(intersect.Height - target_pos.Height) < 10)
                     {
                         User32.MoveWindow(hwnd, intersect.Left, intersect.Top, intersect.Width, intersect.Height, true);
-                        Log.Error("還原貼齊視窗 {0}", GetWindowTitle(hwnd));
+                        Log.Info("還原貼齊視窗 {0}", GetWindowTitle(hwnd));
                         break;
                     }
                 }
@@ -4970,7 +4970,7 @@ namespace PersistentWindows.Common
                 if (deferOnTimeout)
                 {
                     EnqueueDeferredCommand(hWnd, msg, wParam);
-                    Log.Error("視窗 {0:X4}「{1}」回應緩慢，延後指令 0x{2:X}/0x{3:X}", hWnd.ToInt64(), GetWindowTitle(hWnd), msg, wParam);
+                    Log.Info("視窗 {0:X4}「{1}」回應緩慢，延後指令 0x{2:X}/0x{3:X}", hWnd.ToInt64(), GetWindowTitle(hWnd), msg, wParam);
                 }
                 return false;
             }
@@ -4991,7 +4991,7 @@ namespace PersistentWindows.Common
             if (deferredCommands.Count == 0)
                 return;
 
-            Log.Event("緩慢重試：有 {0} 個視窗的同步指令被延後", deferredCommands.Count);
+            Log.Info("緩慢重試：有 {0} 個視窗的同步指令被延後", deferredCommands.Count);
 
             foreach (var kvp in deferredCommands)
             {
@@ -5055,12 +5055,12 @@ namespace PersistentWindows.Common
             /*
             if (sourceRect.Width != targetRect.Width && sourceRect.Height != targetRect.Height)
             {
-                Log.Error("等待工作列穩定");
+                Log.Info("等待工作列穩定");
                 return false;
             }
             */
 
-            Log.Event($"將工作列從 {sourceRect} 移動到 {targetRect}");
+            Log.Info($"將工作列從 {sourceRect} 移動到 {targetRect}");
 
             IntPtr hTaskBar = GetRealTaskBar(hwnd);
             User32.GetWindowRect(hTaskBar, ref sourceRect);
@@ -5187,7 +5187,7 @@ namespace PersistentWindows.Common
             if (deltaWidth != 0)
             {
                 //restore width
-                Log.Error("還原工作列視窗 {0} 的寬度", GetWindowTitle(hwnd));
+                Log.Info("還原工作列視窗 {0} 的寬度", GetWindowTitle(hwnd));
 
                 start_y = sourceRect.Top + sourceRect.Height / 2;
                 if (left_edge)
@@ -5206,7 +5206,7 @@ namespace PersistentWindows.Common
             else
             {
                 //restore height
-                Log.Error("還原工作列視窗 {0} 的高度", GetWindowTitle(hwnd));
+                Log.Info("還原工作列視窗 {0} 的高度", GetWindowTitle(hwnd));
 
                 start_x = sourceRect.Left + sourceRect.Width / 2;
                 if (top_edge)
@@ -5499,7 +5499,7 @@ namespace PersistentWindows.Common
                 if (prevDisplayMetrics == null)
                 {
                     if (restoringSnapshot && restoreTimes == 0 && windowProcessName.ContainsKey(hWnd))
-                        Log.Error("找不到視窗 {0} {1} 的先前記錄", GetWindowTitle(hWnd), windowProcessName[hWnd]);
+                        Log.Info("找不到視窗 {0} {1} 的先前記錄", GetWindowTitle(hWnd), windowProcessName[hWnd]);
                     continue;
                 }
 
@@ -5508,7 +5508,7 @@ namespace PersistentWindows.Common
                     Process process = GetProcess(hWnd);
                     if (process != null && !process.Responding)
                     {
-                        Log.Error("還原無回應的視窗 {0}", GetWindowTitle(hWnd));
+                        Log.Info("還原無回應的視窗 {0}", GetWindowTitle(hWnd));
                         unResponsiveWindows.Add(hWnd);
                         //continue;
                     }
@@ -5538,7 +5538,7 @@ namespace PersistentWindows.Common
                     {
                         if (IsRectOffScreen(prevDisplayMetrics.WindowPlacement.NormalPosition))
                         {
-                            Log.Error("目標位置在畫面之外，略過還原 {0}，Rect = {1}", GetWindowTitle(hWnd), rect.ToString());
+                            Log.Info("目標位置在畫面之外，略過還原 {0}，Rect = {1}", GetWindowTitle(hWnd), rect.ToString());
                             continue;
                         }
                     }
@@ -5552,7 +5552,7 @@ namespace PersistentWindows.Common
                     if (!IsTaskbarAligned(hWnd))
                     {
                         //not ready to drag
-                        Log.Error("工作列尚未對齊");
+                        Log.Info("工作列尚未對齊");
                         continue;
                     }
 
@@ -5593,7 +5593,7 @@ namespace PersistentWindows.Common
                             continue;
                         }
                         HideWindow(hWnd);
-                        Log.Error("保留隱藏的視窗 {0}", GetWindowTitle(hWnd));
+                        Log.Info("保留隱藏的視窗 {0}", GetWindowTitle(hWnd));
                         continue;
                     }
                     if (prevDisplayMetrics.IsInvisible || restoreTimes > 0)
@@ -5614,7 +5614,7 @@ namespace PersistentWindows.Common
                         }
 
                         if (action_taken)
-                            Log.Error("保留最小化的視窗 {0}", GetWindowTitle(hWnd));
+                            Log.Info("保留最小化的視窗 {0}", GetWindowTitle(hWnd));
                         continue;
                     }
                 }
@@ -5644,7 +5644,7 @@ namespace PersistentWindows.Common
                 {
                     if (curDisplayMetrics.IsMinimized)
                     {
-                        Log.Error("將最小化視窗還原為全螢幕 {0}", GetWindowTitle(hWnd));
+                        Log.Info("將最小化視窗還原為全螢幕 {0}", GetWindowTitle(hWnd));
                         need_move_window = false;
                         restore_fullscreen = true;
                         User32.ShowWindow(hWnd, (int)ShowWindowCommands.Normal);
@@ -5674,7 +5674,7 @@ namespace PersistentWindows.Common
                     }
                     else if (prevDisplayMetrics.IsFullScreen)
                     {
-                        Log.Error("復原全螢幕視窗 {0}", GetWindowTitle(hWnd));
+                        Log.Info("復原全螢幕視窗 {0}", GetWindowTitle(hWnd));
                         long style = User32.GetWindowLong(hWnd, User32.GWL_STYLE);
                         if (IsRdpWindow(hWnd) && ((style & (long)WindowStyleFlags.CAPTION)) != 0L)
                         {
@@ -5689,7 +5689,7 @@ namespace PersistentWindows.Common
 
                             windowPlacement.ShowCmd = ShowWindowCommands.Normal;
                             if (debugWindows.Contains(hWnd))
-                            Log.Event("SetWindowPlacement({0} [{1}x{2}]-[{3}x{4}]) - {5}",
+                            Log.Info("SetWindowPlacement({0} [{1}x{2}]-[{3}x{4}]) - {5}",
                                 prevDisplayMetrics.ProcessName,
                                 windowPlacement.NormalPosition.Left,
                                 windowPlacement.NormalPosition.Top,
@@ -5719,12 +5719,12 @@ namespace PersistentWindows.Common
                         }
                         else
                         {
-                            Log.Error($"保留浮動視窗 {GetWindowTitle(hWnd)} 的大小");
+                            Log.Info($"保留浮動視窗 {GetWindowTitle(hWnd)} 的大小");
                             success &= User32.MoveWindow(hWnd, rect.Left, rect.Top, curDisplayMetrics.ScreenPosition.Width, curDisplayMetrics.ScreenPosition.Height, true);
                         }
 
                         if (debugWindows.Contains(hWnd))
-                        Log.Event("MoveWindow({0} [{1}x{2}]-[{3}x{4}]) - {5}",
+                        Log.Info("MoveWindow({0} [{1}x{2}]-[{3}x{4}]) - {5}",
                             prevDisplayMetrics.ProcessName,
                             rect.Left,
                             rect.Top,
@@ -6214,7 +6214,7 @@ namespace PersistentWindows.Common
                                 User32.MoveWindow(hwnd, 100, 100, rect.Width > 0 ? rect.Width : 800, rect.Height > 0 ? rect.Height : 600, true);
                         }
 
-                        Log.Error("強制還原視窗 {0} {1}", dm.ProcessName, GetWindowTitle(hwnd));
+                        Log.Info("強制還原視窗 {0} {1}", dm.ProcessName, GetWindowTitle(hwnd));
                     }
                 }
             }

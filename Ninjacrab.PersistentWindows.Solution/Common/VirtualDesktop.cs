@@ -35,7 +35,7 @@ namespace PersistentWindows.Common
             }
             catch
             {
-                Log.Error("作業系統不支援虛擬桌面功能");
+                Log.Info("作業系統不支援虛擬桌面功能");
             }
         }
 

@@ -19,6 +19,14 @@ namespace PersistentWindows.Common.Diagnostics
         // 而 EventLog.SourceExists() 在一般權限下甚至會直接擲出 SecurityException
         // （無法搜尋 Security 與 State 記錄檔）。使用者因此常常什麼記錄都看不到。
         // 這裡另外寫一份純文字記錄檔，不需要任何特殊權限。
+
+        private const long MaxLogFileBytes = 2 * 1024 * 1024;
+        private const int RotatedLogCount = 2;
+
+        private static readonly object fileLock = new object();
+        private static string logFilePath;
+        private static List<string> pendingLines = new List<string>();
+
         // 可忽略的雜訊錯誤
         //
         // 這兩種失敗在正常運作中會頻繁出現（建立既有檔案、缺少系統管理員權限
@@ -29,13 +37,6 @@ namespace PersistentWindows.Common.Diagnostics
         private const int ErrorAccessDenied = 5;
         private const int ErrorFileExists = 80;
         private static readonly string[] IgnorableErrors = BuildIgnorableErrors();
-
-        private const long MaxLogFileBytes = 2 * 1024 * 1024;
-        private const int RotatedLogCount = 2;
-
-        private static readonly object fileLock = new object();
-        private static string logFilePath;
-        private static List<string> pendingLines = new List<string>();
 
         private static string[] BuildIgnorableErrors()
         {
@@ -150,6 +151,10 @@ namespace PersistentWindows.Common.Diagnostics
         {
             string body = StripLeadingTimestamp(message ?? String.Empty)
                 .Replace("\r\n", " ").Replace("\n", " ").TrimEnd();
+
+            // 上游用空字串當主控台的分隔行，寫進記錄檔只會變成空白列
+            if (body.Length == 0)
+                return;
 
             string line = String.Format("{0:yyyy-MM-dd HH:mm:ss.fff}\t{1}\t{2}",
                 DateTime.Now, kind, body);
@@ -299,12 +304,22 @@ namespace PersistentWindows.Common.Diagnostics
 #endif
         }
 
+        /// <summary>
+        /// 記錄例行的內部動作。
+        ///
+        /// 上游把這類訊息全走 Log.Error，因為 Trace 與 Info 只在 DEBUG 版輸出，
+        /// Release 版等於看不到；結果記錄檢視裡幾乎每一行都標成「錯誤」。
+        /// 這裡讓資訊等級真的會輸出，但只寫記錄檔，不寫 Windows 事件記錄，
+        /// 以免例行雜訊灌爆系統的事件檢視器。
+        /// </summary>
         public static void Info(string format, params object[] args)
         {
             if (silent)
                 return;
-#if DEBUG
+
             var message = Format(format, args);
+            WriteToFile("資訊", message);
+#if DEBUG
             Console.Write(message);
 #endif
         }

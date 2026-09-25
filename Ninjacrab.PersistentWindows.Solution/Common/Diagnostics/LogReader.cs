@@ -90,10 +90,24 @@ namespace PersistentWindows.Common.Diagnostics
             return new LogRecord
             {
                 Time = time,
-                EventId = parts[1] == "錯誤" ? LogRecord.EventIdError : LogRecord.EventIdEvent,
+                EventId = ParseKind(parts[1]),
                 // 舊版記錄檔的內容可能仍帶有重複的時間前綴，讀取時一併移除
                 Message = Log.StripLeadingTimestamp(parts[2]),
             };
+        }
+
+        /// <summary>
+        /// 將記錄檔的類型欄位轉回事件識別碼。未知的類型一律當作一般事件。
+        /// </summary>
+        public static int ParseKind(string kind)
+        {
+            if (kind == "錯誤")
+                return LogRecord.EventIdError;
+
+            if (kind == "資訊")
+                return LogRecord.EventIdInfo;
+
+            return LogRecord.EventIdEvent;
         }
 
         /// <summary>

@@ -7,7 +7,8 @@ namespace PersistentWindows.Common.Models
     /// </summary>
     public class LogRecord
     {
-        /// <summary>事件識別碼：9990 為一般事件，9999 為錯誤。</summary>
+        /// <summary>事件識別碼：9980 為資訊，9990 為一般事件，9999 為錯誤。</summary>
+        public const int EventIdInfo = 9980;
         public const int EventIdEvent = 9990;
         public const int EventIdError = 9999;
 
@@ -24,7 +25,16 @@ namespace PersistentWindows.Common.Models
         /// <summary>類型的顯示字串。</summary>
         public string KindText
         {
-            get { return EventId == EventIdError ? "錯誤" : "事件"; }
+            get
+            {
+                if (EventId == EventIdError)
+                    return "錯誤";
+
+                if (EventId == EventIdInfo)
+                    return "資訊";
+
+                return "事件";
+            }
         }
 
         public string TimeText
