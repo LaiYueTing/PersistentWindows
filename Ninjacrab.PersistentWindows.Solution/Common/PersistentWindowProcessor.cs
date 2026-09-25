@@ -5286,7 +5286,12 @@ namespace PersistentWindows.Common
             User32.SetThreadDpiAwarenessContextSafe(User32.DPI_AWARENESS_CONTEXT_UNAWARE);
 
             Log.Info("");
-            Log.Info("第 {0} 回合還原 {1} 的視窗", restoreTimes, displayKey);
+            // 單一視窗（例如剛開啟的視窗回到上次的位置）也會走到這裡，
+            // 此時 restoreTimes 是整批還原的狀態，印出來只會誤導
+            if (sWindow == IntPtr.Zero)
+                Log.Info("第 {0} 回合還原 {1} 的視窗", restoreTimes, displayKey);
+            else
+                Log.Info("還原單一視窗「{0}」的位置", GetWindowTitle(sWindow));
 
             DateTime lastCaptureTime = time;
 
