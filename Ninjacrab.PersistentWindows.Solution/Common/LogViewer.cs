@@ -29,6 +29,8 @@ namespace PersistentWindows.Common
         private const int IdcButtonRefresh = 1401;
         private const int IdcButtonCopy = 1402;
         private const int IdcButtonExport = 1403;
+        private const int IdcButtonOpenFolder = 1409;
+        private const int IdcButtonClear = 1410;
         private const int IdcCheckAutoRefresh = 1405;
         private const int IdcCheckError = 1406;
         private const int IdcCheckEvent = 1407;
@@ -58,6 +60,8 @@ namespace PersistentWindows.Common
         private const short ButtonRefreshWidth = 70;
         private const short ButtonCopyWidth = 92;
         private const short ButtonExportWidth = 92;
+        private const short ButtonOpenFolderWidth = 100;
+        private const short ButtonClearWidth = 70;
         private const short ButtonCloseWidth = 58;
         private const short CheckAutoRefreshWidth = 76;
         private const short CheckKindWidth = 52;
@@ -213,6 +217,15 @@ namespace PersistentWindows.Common
 
             builder.AddControl(DialogTemplateBuilder.AtomButton, IdcButtonExport, buttonStyle, 0,
                 x, buttonTop, ButtonExportWidth, ButtonHeight, "匯出文字檔(&S) ...");
+            x += ButtonExportWidth + Gap;
+
+            builder.AddControl(DialogTemplateBuilder.AtomButton, IdcButtonOpenFolder, buttonStyle, 0,
+                x, buttonTop, ButtonOpenFolderWidth, ButtonHeight, "開啟記錄檔資料夾(&F)");
+
+            // 會刪資料的按鈕與其他動作分開，放在「關閉」左邊
+            builder.AddControl(DialogTemplateBuilder.AtomButton, IdcButtonClear, buttonStyle, 0,
+                (short)(DialogWidth - Margin - ButtonCloseWidth - Gap - ButtonClearWidth), buttonTop,
+                ButtonClearWidth, ButtonHeight, "清除記錄檔(&D)");
 
             builder.AddControl(DialogTemplateBuilder.AtomButton, IdcButtonClose, buttonStyle, 0,
                 (short)(DialogWidth - Margin - ButtonCloseWidth), buttonTop,
@@ -382,6 +395,14 @@ namespace PersistentWindows.Common
                     ExportToFile();
                     return new IntPtr(1);
 
+                case IdcButtonOpenFolder:
+                    OpenLogFolder();
+                    return new IntPtr(1);
+
+                case IdcButtonClear:
+                    ClearLog();
+                    return new IntPtr(1);
+
                 case IdcCheckError:
                 case IdcCheckEvent:
                 case IdcCheckInfo:
@@ -477,10 +498,14 @@ namespace PersistentWindows.Common
             int x = margin;
             x = LayoutButton(IdcButtonRefresh, x, buttonTop, ButtonRefreshWidth, buttonHeight, gap);
             x = LayoutButton(IdcButtonCopy, x, buttonTop, ButtonCopyWidth, buttonHeight, gap);
-            LayoutButton(IdcButtonExport, x, buttonTop, ButtonExportWidth, buttonHeight, gap);
+            x = LayoutButton(IdcButtonExport, x, buttonTop, ButtonExportWidth, buttonHeight, gap);
+            LayoutButton(IdcButtonOpenFolder, x, buttonTop, ButtonOpenFolderWidth, buttonHeight, gap);
 
             int closeWidth = Dx(ButtonCloseWidth);
+            int clearWidth = Dx(ButtonClearWidth);
             MoveControl(IdcButtonClose, width - margin - closeWidth, buttonTop, closeWidth, buttonHeight);
+            MoveControl(IdcButtonClear, width - margin - closeWidth - gap - clearWidth, buttonTop,
+                clearWidth, buttonHeight);
 
             DistributeColumns(contentWidth);
         }
@@ -717,6 +742,7 @@ namespace PersistentWindows.Common
             NativeDialog.EnableWindow(NativeDialog.GetDlgItem(dialogHandle, IdcButtonRefresh), enable);
             NativeDialog.EnableWindow(NativeDialog.GetDlgItem(dialogHandle, IdcButtonCopy), enable);
             NativeDialog.EnableWindow(NativeDialog.GetDlgItem(dialogHandle, IdcButtonExport), enable);
+            NativeDialog.EnableWindow(NativeDialog.GetDlgItem(dialogHandle, IdcButtonClear), enable);
         }
 
         #endregion
@@ -776,6 +802,76 @@ namespace PersistentWindows.Common
                 Log.Error(ex);
                 ShowMessage("匯出失敗：" + ex.Message);
             }
+        }
+
+        /// <summary>
+        /// 開啟記錄檔所在的資料夾，並在檔案總管中選取記錄檔。
+        /// </summary>
+        private void OpenLogFolder()
+        {
+            string path = Log.LogFilePath;
+            if (String.IsNullOrEmpty(path))
+            {
+                ShowMessage("尚未設定記錄檔位置。");
+                return;
+            }
+
+            try
+            {
+                IntPtr result;
+                if (File.Exists(path))
+                {
+                    result = Shell32.ShellExecuteW(dialogHandle, "open", "explorer.exe",
+                        "/select,\"" + path + "\"", null, NativeDialog.SW_SHOWNORMAL);
+                }
+                else
+                {
+                    result = Shell32.ShellExecuteW(dialogHandle, "open", Path.GetDirectoryName(path), null, null,
+                        NativeDialog.SW_SHOWNORMAL);
+                }
+
+                // ShellExecuteW 失敗時不會擲出例外，而是回傳小於等於 32 的錯誤碼
+                long code = result.ToInt64();
+                if (code <= 32)
+                {
+                    Log.Error("開啟記錄檔資料夾失敗，ShellExecuteW 回傳 {0}：{1}", code, path);
+                    ShowMessage(String.Format("無法開啟記錄檔資料夾（錯誤碼 {0}）。", code));
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex);
+                ShowMessage("無法開啟記錄檔資料夾：" + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 清空記錄檔與輪替後的舊檔。刪了就回不來，因此先確認，預設按鈕為「否」。
+        /// </summary>
+        private void ClearLog()
+        {
+            if (loading)
+                return;
+
+            int answer = NativeDialog.MessageBox(dialogHandle,
+                "確定要清除所有記錄嗎？" + Environment.NewLine + Environment.NewLine
+                + "會一併刪除輪替後的舊記錄檔，此動作無法復原。",
+                "清除記錄檔",
+                NativeDialog.MB_YESNO | NativeDialog.MB_ICONWARNING | NativeDialog.MB_DEFBUTTON2);
+            if (answer != NativeDialog.IDYES)
+                return;
+
+            string error = Log.ClearLogFiles();
+            if (error != null)
+            {
+                ShowMessage("清除記錄檔失敗：" + error);
+                return;
+            }
+
+            // 留下一筆紀錄，清單不會是全空的，也看得出是何時清的
+            Log.Event("已清除記錄檔");
+            savedSelection = -1;
+            StartLoad();
         }
 
         private void ShowMessage(string message)

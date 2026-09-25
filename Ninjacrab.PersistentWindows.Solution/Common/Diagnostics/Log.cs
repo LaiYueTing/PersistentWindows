@@ -198,6 +198,45 @@ namespace PersistentWindows.Common.Diagnostics
         }
 
         /// <summary>
+        /// 清空記錄檔並刪除輪替後的舊檔。成功時回傳 null，否則回傳失敗原因。
+        ///
+        /// 目前的記錄檔是截斷而不是刪除：記錄檢視可能正以共用刪除模式開著它，
+        /// 此時刪除只會讓檔案進入「等待刪除」狀態，接下來的寫入反而會失敗。
+        /// </summary>
+        public static string ClearLogFiles()
+        {
+            lock (fileLock)
+            {
+                if (logFilePath == null)
+                    return "尚未設定記錄檔位置";
+
+                try
+                {
+                    for (int i = RotatedLogCount; i >= 1; --i)
+                    {
+                        string rotated = logFilePath + "." + i;
+                        if (File.Exists(rotated))
+                            File.Delete(rotated);
+                    }
+
+                    if (File.Exists(logFilePath))
+                    {
+                        using (new FileStream(logFilePath, FileMode.Truncate, FileAccess.Write,
+                            FileShare.ReadWrite | FileShare.Delete))
+                        {
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return ex.Message;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// 記錄檔超過上限時輪替，保留數份舊檔。
         /// </summary>
         private static void RotateIfNeeded()
