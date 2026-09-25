@@ -759,7 +759,16 @@ namespace PersistentWindows.Common
                 }
 
                 // 以寬字元 API 開啟，含中文字的路徑才不會被 ANSI 轉碼破壞
-                Shell32.ShellExecuteW(dialogHandle, "open", folder, null, null, NativeDialog.SW_SHOWNORMAL);
+                IntPtr result = Shell32.ShellExecuteW(dialogHandle, "open", folder, null, null,
+                    NativeDialog.SW_SHOWNORMAL);
+
+                // ShellExecuteW 失敗時不會擲出例外，而是回傳小於等於 32 的錯誤碼
+                long code = result.ToInt64();
+                if (code <= 32)
+                {
+                    Log.Error("開啟快照儲存目錄失敗，ShellExecuteW 回傳 {0}：{1}", code, folder);
+                    ShowError(String.Format("無法開啟快照儲存目錄（錯誤碼 {0}）。", code));
+                }
             }
             catch (Exception ex)
             {
