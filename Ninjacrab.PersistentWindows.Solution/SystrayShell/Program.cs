@@ -56,7 +56,7 @@ if not errorlevel 1 goto wait_to_finish";
             Application.SetCompatibleTextRenderingDefault(false);
 
             Log.Init();
-            Log.Event($" {Application.ProductVersion}; OS version: {Environment.OSVersion.VersionString}; .NET version: {Environment.Version}");
+            Log.Event($"版本 {Application.ProductVersion}；作業系統版本 {Environment.OSVersion.VersionString}；.NET 版本 {Environment.Version}");
 
             pwp = new PersistentWindowProcessor();
 
@@ -353,7 +353,7 @@ if not errorlevel 1 goto wait_to_finish";
                         break;
                     case "-auto_restore_new_display_session_from_db=0":
                         pwp.autoRestoreLiveWindowsFromDb = false;
-                        Log.Error("turn off auto restore db for new session");
+                        Log.Error("新工作階段已關閉從資料庫自動還原");
                         break;
                     case "-invoke_multi_window_process_only_once=0":
                         launch_once_per_process_id = false;

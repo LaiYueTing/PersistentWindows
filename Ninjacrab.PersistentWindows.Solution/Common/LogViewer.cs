@@ -131,7 +131,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
             finally
             {
@@ -224,7 +224,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
                 return IntPtr.Zero;
             }
         }
@@ -706,7 +706,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
                 ShowMessage("複製到剪貼簿失敗，剪貼簿可能正被其他程式占用。");
             }
         }
@@ -739,7 +739,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
                 ShowMessage("匯出失敗：" + ex.Message);
             }
         }
@@ -753,7 +753,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
                 ShowMessage("無法開啟事件檢視器。");
             }
         }

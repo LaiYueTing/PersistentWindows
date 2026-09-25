@@ -204,7 +204,7 @@ namespace PersistentWindows.Common.Diagnostics
             catch (Exception ex)
             {
                 error = ex.Message;
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
 
             return records;

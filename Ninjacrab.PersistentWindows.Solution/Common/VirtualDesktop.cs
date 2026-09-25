@@ -35,7 +35,7 @@ namespace PersistentWindows.Common
             }
             catch
             {
-                Log.Error("VirtualDesktop feature not supported by OS");
+                Log.Error("作業系統不支援虛擬桌面功能");
             }
         }
 
@@ -54,7 +54,7 @@ namespace PersistentWindows.Common
             if (hr != 0)
             {
                 //Marshal.ThrowExceptionForHR(hr);
-                Log.Error("IsWindowOnCurrentVirtualDesktop() call failed");
+                Log.Error("IsWindowOnCurrentVirtualDesktop() 呼叫失敗");
             }
 
             return result != 0;
@@ -69,7 +69,7 @@ namespace PersistentWindows.Common
             if (hr != 0)
             {
                 //Marshal.ThrowExceptionForHR(hr);
-                //Log.Error("GetWindowDesktopId() call failed");
+                //Log.Error("GetWindowDesktopId() 呼叫失敗");
             }
 
             return result;
@@ -84,7 +84,7 @@ namespace PersistentWindows.Common
             if (hr != 0)
             {
                 //Marshal.ThrowExceptionForHR(hr);
-                Log.Error("MoveWindowToDesktop() call failed");
+                Log.Error("MoveWindowToDesktop() 呼叫失敗");
             }
         }
     }

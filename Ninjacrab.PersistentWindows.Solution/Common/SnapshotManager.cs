@@ -136,7 +136,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
             finally
             {
@@ -230,7 +230,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
                 return IntPtr.Zero;
             }
         }
@@ -684,7 +684,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
                 ShowError("還原快照時發生錯誤，詳情請見事件檢視器中的 Log 記錄。");
             }
         }
@@ -763,7 +763,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
                 ShowError("無法開啟快照儲存目錄。");
             }
         }
@@ -796,7 +796,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
                 ShowError("儲存快照失敗，詳情請見事件檢視器中的 Log 記錄。");
                 return;
             }
@@ -959,7 +959,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
                 return false;
             }
             finally
@@ -1011,7 +1011,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
 
             return IntPtr.Zero;

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Diagnostics;
 
@@ -18,12 +19,63 @@ namespace PersistentWindows.Common.Diagnostics
         // 而 EventLog.SourceExists() 在一般權限下甚至會直接擲出 SecurityException
         // （無法搜尋 Security 與 State 記錄檔）。使用者因此常常什麼記錄都看不到。
         // 這裡另外寫一份純文字記錄檔，不需要任何特殊權限。
+        // 可忽略的雜訊錯誤
+        //
+        // 這兩種失敗在正常運作中會頻繁出現（建立既有檔案、缺少系統管理員權限
+        // 而無法移動別人的視窗），不值得寫進 Windows 事件記錄。
+        // 但訊息文字是作業系統產生的，在繁體中文系統上是「存取被拒。」之類的中文，
+        // 原本寫死的英文比對永遠不會成立，過濾等於失效。
+        // 這裡改為在啟動時依錯誤碼取得當地語言訊息，英文字串則保留以相容其他語系。
+        private const int ErrorAccessDenied = 5;
+        private const int ErrorFileExists = 80;
+        private static readonly string[] IgnorableErrors = BuildIgnorableErrors();
+
         private const long MaxLogFileBytes = 2 * 1024 * 1024;
         private const int RotatedLogCount = 2;
 
         private static readonly object fileLock = new object();
         private static string logFilePath;
         private static List<string> pendingLines = new List<string>();
+
+        private static string[] BuildIgnorableErrors()
+        {
+            var list = new List<string>
+            {
+                "Cannot create a file when that file already exists",
+                "Access is denied",
+            };
+
+            foreach (int code in new[] { ErrorFileExists, ErrorAccessDenied })
+            {
+                try
+                {
+                    string localized = new System.ComponentModel.Win32Exception(code).Message;
+                    if (!String.IsNullOrEmpty(localized) && !list.Contains(localized))
+                        list.Add(localized);
+                }
+                catch (Exception)
+                {
+                    // 取不到當地語言訊息時沿用英文比對
+                }
+            }
+
+            return list.ToArray();
+        }
+
+        /// <summary>訊息是否屬於可忽略的雜訊錯誤。</summary>
+        public static bool IsIgnorableError(string message)
+        {
+            if (String.IsNullOrEmpty(message))
+                return false;
+
+            foreach (var known in IgnorableErrors)
+            {
+                if (message.IndexOf(known, StringComparison.Ordinal) >= 0)
+                    return true;
+            }
+
+            return false;
+        }
 
         /// <summary>記錄檔完整路徑，尚未設定時為 null。</summary>
         public static string LogFilePath
@@ -265,15 +317,9 @@ namespace PersistentWindows.Common.Diagnostics
             var message = Format(format, args);
             WriteToFile("錯誤", message);
 
-            if (message.Contains("Cannot create a file when that file already exists"))
+            if (IsIgnorableError(message))
             {
-                // ignore trivial error
-                return;
-            }
-
-            if (message.Contains("Access is denied"))
-            {
-                // ignore window move failure due to lack of admin privilege
+                // 可忽略的雜訊：檔案已存在，或缺少系統管理員權限而無法移動視窗
                 return;
             }
 
@@ -281,6 +327,30 @@ namespace PersistentWindows.Common.Diagnostics
             Console.Write(message);
 #endif
             WriteEntrySafe(message, 9999);
+        }
+
+        /// <summary>
+        /// 記錄例外。
+        ///
+        /// 直接寫 ex.ToString() 會得到一整段英文堆疊，看不出是哪個動作出錯。
+        /// 這裡先寫一行中文摘要（例外訊息本身由 .NET 依系統語言產生，
+        /// 在繁體中文系統上就是中文），再單獨寫一行堆疊供追查。
+        /// 呼叫端的成員名稱由編譯器填入，屬於程式識別碼，不做在地化。
+        /// </summary>
+        public static void Error(Exception ex, [CallerMemberName] string member = null)
+        {
+            if (ex == null)
+                return;
+
+            Error("{0} 發生例外（{1}）：{2}",
+                String.IsNullOrEmpty(member) ? "未知位置" : member,
+                ex.GetType().Name,
+                ex.Message);
+
+            // 換行交給 WriteToFile 壓成單行，這裡不重複處理
+            string stack = ex.StackTrace;
+            if (!String.IsNullOrEmpty(stack))
+                Error("例外堆疊：{0}", stack.Trim());
         }
 
         public static void Event(string format, params object[] args)

@@ -43,7 +43,7 @@ namespace PersistentWindows.SystrayShell
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
         }
 
@@ -94,7 +94,7 @@ namespace PersistentWindows.SystrayShell
                             }
                             catch (Exception ex)
                             {
-                                Log.Error(ex.ToString());
+                                Log.Error(ex);
                                 Program.systrayForm.notifyIconMain.ShowBalloonTip(8000, "已透過快速鍵開啟網頁指令視窗", "再按一次快速鍵 (Alt + W) 即可關閉", ToolTipIcon.Info);
                                 Process.Start(Program.ProjectUrl + "/blob/master/webpage_commander.md");
                             }

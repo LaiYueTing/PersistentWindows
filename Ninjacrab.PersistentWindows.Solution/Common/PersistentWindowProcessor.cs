@@ -314,7 +314,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
         }
 
@@ -368,7 +368,7 @@ namespace PersistentWindows.Common
                 {
                     var dm = deadApps[display_config][oldest_window].LastOrDefault<ApplicationDisplayMetrics>();
                     if (dm != null)
-                        Log.Error($"remove old record {dm.Title}");
+                        Log.Error($"移除舊記錄 {dm.Title}");
                     deadApps[display_config].Remove(oldest_window);
 
                     found_old_record = deadApps[display_config].Count > 0;
@@ -432,7 +432,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception e)
             {
-                Log.Error(e.ToString());
+                Log.Error(e);
             }
         }
 
@@ -470,7 +470,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception e)
             {
-                Log.Error(e.ToString());
+                Log.Error(e);
             }
         }
 
@@ -484,7 +484,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
 
             return r;
@@ -526,7 +526,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception e)
             {
-                Log.Error(e.ToString());
+                Log.Error(e);
             }
         }
 
@@ -639,7 +639,7 @@ namespace PersistentWindows.Common
                         RestoreApplicationsOnCurrentDisplays(curDisplayKey, hwnd, t);
                         restoringFromMem = false;
 
-                        Log.Event("swapped window position");
+                        Log.Event("已交換視窗位置");
                     }
                 }
                 else
@@ -747,7 +747,7 @@ namespace PersistentWindows.Common
                     }
                     catch (Exception ex)
                     {
-                        Log.Error(ex.ToString());
+                        Log.Error(ex);
                     }
                     */
                 }
@@ -801,7 +801,7 @@ namespace PersistentWindows.Common
                     return;
                 */
 
-                Log.Trace("Capture timer expired");
+                Log.Trace("擷取計時器到期");
                 BatchCaptureApplicationsOnCurrentDisplays();
             });
 
@@ -838,12 +838,12 @@ namespace PersistentWindows.Common
                     restoreHalted = false;
                     topmostWindowsFixed.Clear();
 
-                    Log.Error("Restore aborted for {0}", displayKey);
+                    Log.Error("已中止還原 {0}", displayKey);
 
                     curDisplayKey = displayKey;
                     if (fullScreenGamingWindows.Contains(foreGroundWindow) || !normalSessions.Contains(curDisplayKey))
                     {
-                        Log.Event("no need to restore fresh session {0}", curDisplayKey);
+                        Log.Event("全新工作階段 {0} 不需要還原", curDisplayKey);
                         User32.GetCursorPos(out initCursorPos);
 
                         checkUpgrade = false;
@@ -856,7 +856,7 @@ namespace PersistentWindows.Common
                     else
                     {
                         // do restore again, while keeping previous capture time unchanged
-                        Log.Event("Restart restore for {0}", curDisplayKey);
+                        Log.Event("重新開始還原 {0}", curDisplayKey);
                         restoringFromMem = true;
                         StartRestoreTimer();
                         return;
@@ -873,7 +873,7 @@ namespace PersistentWindows.Common
                     iconBusy = false;
                     DisarmRestoreWatchdog();
 
-                    Log.Event("Restore finished in pass {0} with {1} windows recovered for display setting {2}", restorePass, numWindowRestored, curDisplayKey);
+                    Log.Event("第 {0} 回合還原完成，顯示設定 {2} 共還原 {1} 個視窗", restorePass, numWindowRestored, curDisplayKey);
                     sessionActive = true;
 
                     if (!wasRestoringSnapshot && !wasRestoringFromDB)
@@ -899,7 +899,7 @@ namespace PersistentWindows.Common
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e.ToString());
+                    Log.Error(e);
                 }
 
                 enableRestoreMenu(db_exist, checkUpgrade);
@@ -972,7 +972,7 @@ namespace PersistentWindows.Common
                     process.PriorityClass = ProcessPriorityClass.High;
                     EndDisplaySession();
                     WriteDataDump();
-                    Log.Event("Session ending");
+                    Log.Event("工作階段即將結束");
                 };
             SystemEvents.SessionEnding += sessionEndingEventHandler;
 
@@ -1004,7 +1004,7 @@ namespace PersistentWindows.Common
                         restoringFromMem = true;
                         StartRestoreTimer(milliSecond: 3000);
                     }
-                    Log.Event("Display setting changing {0}", display_key);
+                    Log.Event("顯示設定變更中 {0}", display_key);
                 };
             SystemEvents.DisplaySettingsChanging += this.displaySettingsChangingHandler;
 
@@ -1014,7 +1014,7 @@ namespace PersistentWindows.Common
                     lastDisplayChangeTime = DateTime.Now;
                     CancelRestoreTimer();
                     string display_key = GetDisplayKey();
-                    Log.Event("Display setting changed {0}", display_key);
+                    Log.Event("顯示設定已變更 {0}", display_key);
 
                     {
                         EndDisplaySession();
@@ -1042,7 +1042,7 @@ namespace PersistentWindows.Common
                                 if (autoRestoreLiveWindowsFromDb && !monitorApplications.ContainsKey(display_key))
                                 {
                                     CaptureApplicationsOnCurrentDisplays(display_key, immediateCapture: true);
-                                    Log.Event("auto restore from db");
+                                    Log.Event("從資料庫自動還原");
                                     restoringFromDB = true;
                                     autoInitialRestoreFromDB = true;
                                     dbDisplayKey = curDisplayKey;
@@ -1062,10 +1062,10 @@ namespace PersistentWindows.Common
                                 if (IsNewWindow(foreGroundWindow))
                                 {
                                     fullScreenGamingWindows.Add(fullScreenGamingWindow);
-                                    Log.Event($"enter full-screen gaming mode {display_key} {GetWindowTitle(foreGroundWindow)}");
+                                    Log.Event($"進入全螢幕遊戲模式 {display_key} {GetWindowTitle(foreGroundWindow)}");
                                 }
                                 else
-                                    Log.Event($"re-enter full-screen gaming mode");
+                                    Log.Event($"重新進入全螢幕遊戲模式");
                             }
 
                             restoreHalted = true;
@@ -1083,7 +1083,7 @@ namespace PersistentWindows.Common
                     switch (e.Mode)
                     {
                         case PowerModes.Suspend:
-                            Log.Event("System suspending");
+                            Log.Event("系統即將暫停");
                             {
                                 sessionActive = false;
                                 if (!sessionLocked)
@@ -1094,7 +1094,7 @@ namespace PersistentWindows.Common
                             break;
 
                         case PowerModes.Resume:
-                            Log.Event("System Resuming");
+                            Log.Event("系統已恢復運作");
                             {
                                 if (!sessionLocked)
                                 {
@@ -1118,7 +1118,7 @@ namespace PersistentWindows.Common
                 switch (args.Reason)
                 {
                     case SessionSwitchReason.SessionLock:
-                        Log.Event("Session closing: reason {0}", args.Reason);
+                        Log.Event("工作階段關閉，原因 {0}", args.Reason);
                         {
                             UndoCapture(DateTime.Now);
                             sessionLocked = true;
@@ -1127,7 +1127,7 @@ namespace PersistentWindows.Common
                         }
                         break;
                     case SessionSwitchReason.SessionUnlock:
-                        Log.Event("Session opening: reason {0}", args.Reason);
+                        Log.Event("工作階段開啟，原因 {0}", args.Reason);
                         {
                             sessionLocked = false;
                             if (promptSessionRestore)
@@ -1143,16 +1143,16 @@ namespace PersistentWindows.Common
                     case SessionSwitchReason.RemoteDisconnect:
                     case SessionSwitchReason.ConsoleDisconnect:
                         sessionActive = false;
-                        Log.Trace("Session closing: reason {0}", args.Reason);
+                        Log.Trace("工作階段關閉，原因 {0}", args.Reason);
                         break;
 
                     case SessionSwitchReason.RemoteConnect:
                         remoteSession = true;
-                        Log.Trace("Session opening: reason {0}", args.Reason);
+                        Log.Trace("工作階段開啟，原因 {0}", args.Reason);
                         break;
                     case SessionSwitchReason.ConsoleConnect:
                         remoteSession = false;
-                        Log.Trace("Session opening: reason {0}", args.Reason);
+                        Log.Trace("工作階段開啟，原因 {0}", args.Reason);
                         break;
                 }
             };
@@ -1163,7 +1163,7 @@ namespace PersistentWindows.Common
             remoteSession = System.Windows.Forms.SystemInformation.TerminalServerSession;
             bool sshot_exist = SnapshotExists(curDisplayKey);
             enableRestoreSnapshotMenu(sshot_exist);
-            Log.Event($"Display config is {curDisplayKey}");
+            Log.Event($"顯示器配置為 {curDisplayKey}");
             using (var persistDB = new LiteDatabase(persistDbName))
             {
                 bool db_exist = persistDB.CollectionExists(curDisplayKey);
@@ -1191,7 +1191,7 @@ namespace PersistentWindows.Common
                 }
                 else if (db_exist && autoRestoreLiveWindowsFromDb)
                 {
-                    Log.Event("auto restore from db");
+                    Log.Event("從資料庫自動還原");
                     restoringFromDB = true;
                     autoInitialRestoreFromDB = true;
                     dbDisplayKey = curDisplayKey;
@@ -1260,7 +1260,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
 
             // 記憶體快照
@@ -1292,7 +1292,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
 
             catalog.Sort(delegate (SnapshotEntry a, SnapshotEntry b)
@@ -1333,7 +1333,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
                 return "未知";
             }
         }
@@ -1384,7 +1384,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
 
             windows.Sort(delegate (SnapshotWindowInfo a, SnapshotWindowInfo b)
@@ -1509,7 +1509,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
                 error = "還原視窗時發生錯誤，詳情請見記錄。";
                 return false;
             }
@@ -1592,7 +1592,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
                 error = "移除視窗記錄時發生錯誤，詳情請見記錄。";
                 return false;
             }
@@ -1622,7 +1622,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
                 return false;
             }
         }
@@ -1659,7 +1659,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
                 return false;
             }
         }
@@ -1705,7 +1705,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
                 return null;
             }
         }
@@ -1724,7 +1724,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
                 return false;
             }
         }
@@ -1991,7 +1991,7 @@ namespace PersistentWindows.Common
             {
                 return false;
             }
-            Log.Error($"top left {topLeft} is off-screen");
+            Log.Error($"左上角 {topLeft} 位於畫面之外");
 
             POINT topRight = new POINT(rect.Left + rect.Width - MinSize, rect.Top + MinSize);
             if (User32.MonitorFromPoint(topRight, User32.MONITOR_DEFAULTTONULL) != IntPtr.Zero)
@@ -1999,7 +1999,7 @@ namespace PersistentWindows.Common
                 return false;
             }
 
-            Log.Error($"top right {topRight} is off-screen");
+            Log.Error($"右上角 {topRight} 位於畫面之外");
             return true;
         }
 
@@ -2016,7 +2016,7 @@ namespace PersistentWindows.Common
 
             bool offscreen = IsRectOffScreen(rect);
             if (offscreen)
-                Log.Error("{0} is off-screen, Rect = {1}", GetWindowTitle(hwnd), rect.ToString());
+                Log.Error("{0} 位於畫面之外，Rect = {1}", GetWindowTitle(hwnd), rect.ToString());
 
             return offscreen;
         }
@@ -2040,7 +2040,7 @@ namespace PersistentWindows.Common
 
             User32.MoveWindow(hwnd, r.Left, r.Top, r.Width, r.Height, true);
             User32.SetForegroundWindow(hwnd);
-            Log.Error("Recover last closing location \"{0}\"", GetWindowTitle(hwnd));
+            Log.Error("還原關閉前的最後位置「{0}」", GetWindowTitle(hwnd));
 
             return true;
         }
@@ -2054,7 +2054,7 @@ namespace PersistentWindows.Common
             var r = d.ScreenPosition;
             User32.MoveWindow(hwnd, r.Left, r.Top, r.Width, r.Height, true);
             User32.SetForegroundWindow(hwnd);
-            Log.Error("Restore last location \"{0}\"", GetWindowTitle(hwnd));
+            Log.Error("還原最後位置「{0}」", GetWindowTitle(hwnd));
         }
 
         private void ResolveWindowHandleCollision(IntPtr hwnd)
@@ -2066,7 +2066,7 @@ namespace PersistentWindows.Common
                     ResolveWindowHandleCollisionCore(hwnd);
                 } catch (Exception ex)
                 {
-                    Log.Error(ex.ToString());
+                    Log.Error(ex);
                 }
             }
         }
@@ -2114,7 +2114,7 @@ namespace PersistentWindows.Common
 
             if (found_conflict)
             {
-                Log.Error($"Resolved window handle conflict between live and dead record {fakeHwnd} for {process_name}");
+                Log.Error($"已解決 {process_name} 存活記錄與失效記錄之間的視窗控制代碼衝突 {fakeHwnd}");
                 fakeHwnd++;
             }
         }
@@ -2154,7 +2154,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception e)
             {
-                Log.Error(e.ToString());
+                Log.Error(e);
             }
 
             foreach (var display_key in monitorApplications.Keys)
@@ -2281,7 +2281,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
 
             return r;
@@ -2403,7 +2403,7 @@ namespace PersistentWindows.Common
 
                 if (diff_size <= MaxDiffPos)
                 {
-                    Log.Event($"matching window with position diff of {diff_size}");
+                    Log.Event($"以位置差異 {diff_size} 比對視窗");
                     return similar_pos_hid;
                 }
 
@@ -2461,7 +2461,7 @@ namespace PersistentWindows.Common
             var displayKey = GetDisplayKey();
             if (!normalSessions.Contains(displayKey))
             {
-                Log.Error("Avoid recover invisible window \"{0}\"", GetWindowTitle(hwnd));
+                Log.Error("避免還原隱藏的視窗「{0}」", GetWindowTitle(hwnd));
                 return;
             }
 
@@ -2485,7 +2485,7 @@ namespace PersistentWindows.Common
             else if (!IsCoreUiWindow(hwnd))
             {
                 User32.MoveWindow(hwnd, rectDesk.Left + 100, rectDesk.Top + 100, rect.Width, rect.Height, true);
-                Log.Error("Auto fix invisible window \"{0}\"", GetWindowTitle(hwnd));
+                Log.Error("自動修正隱藏的視窗「{0}」", GetWindowTitle(hwnd));
             }
         }
 
@@ -2535,7 +2535,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
 
         }
@@ -2621,7 +2621,7 @@ namespace PersistentWindows.Common
                             return;
                         }
 
-                        Log.Error("removed disqualified capture");
+                        Log.Error("已移除不合格的擷取資料");
 
                         prevDisplayMetrics = lastMetrics;
                     }
@@ -2650,7 +2650,7 @@ namespace PersistentWindows.Common
                                || prevDisplayMetrics.WindowPlacement.ShowCmd == ShowWindowCommands.Minimize
                                || target_rect.Left <= -25600)
                             {
-                                Log.Error("no qualified position data to restore minimized window \"{0}\"", GetWindowTitle(hwnd));
+                                Log.Error("沒有合格的位置資料可還原最小化視窗「{0}」", GetWindowTitle(hwnd));
                                 Log.Error("{0}", prevDisplayMetrics);
                                 return; // captured without previous history info, let OS handle it
                             }
@@ -2677,7 +2677,7 @@ namespace PersistentWindows.Common
                                         placement.ShowCmd = ShowWindowCommands.ShowNoActivate;
                                         User32.SetWindowPlacement(hwnd, ref placement);
                                         placement.ShowCmd = ShowWindowCommands.Maximize;
-                                        Log.Error("pre-restore minimized max window \"{0}\"", GetWindowTitle(hwnd));
+                                        Log.Error("預先還原最小化的最大化視窗「{0}」", GetWindowTitle(hwnd));
                                     }
                                     User32.SetWindowPlacement(hwnd, ref placement);
                                     // SetWindowPlacement with NormalPosition usually positions the window correctly
@@ -2690,7 +2690,7 @@ namespace PersistentWindows.Common
                                     User32.GetWindowRect(hwnd, ref actualRect);
                                     if (!actualRect.Equals(target_rect))
                                         User32.MoveWindow(hwnd, target_rect.Left, target_rect.Top, target_rect.Width, target_rect.Height, true);
-                                    Log.Error("restore minimized window \"{0}\"", GetWindowTitle(hwnd));
+                                    Log.Error("還原最小化視窗「{0}」", GetWindowTitle(hwnd));
                                     return;
                                 }
                             }
@@ -2701,7 +2701,7 @@ namespace PersistentWindows.Common
                             if (IsOffScreen(hwnd))
                             {
                                 CenterWindow(hwnd);
-                                Log.Error("fix invisible window \"{0}\"", GetWindowTitle(hwnd));
+                                Log.Error("修正隱藏的視窗「{0}」", GetWindowTitle(hwnd));
                             }
                         }
                     }
@@ -2709,7 +2709,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
         }
 
@@ -2759,7 +2759,7 @@ namespace PersistentWindows.Common
                     }
                     catch(Exception ex)
                     {
-                        Log.Error(ex.ToString());
+                        Log.Error(ex);
                         //process might have been terminated
                         return false;
                     }
@@ -2802,7 +2802,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
             finally
             {
@@ -2874,7 +2874,7 @@ namespace PersistentWindows.Common
                 noRestoreWindows.Remove(hwnd);
                 if (debugWindows.Contains(hwnd))
                 {
-                    Log.Event($"kill window {windowTitle[hwnd]}");
+                    Log.Event($"視窗已關閉 {windowTitle[hwnd]}");
                     debugWindows.Remove(hwnd);
                 }
                 if (noinheritWindows.Contains(hwnd))
@@ -2910,7 +2910,7 @@ namespace PersistentWindows.Common
                         {
                             if (dm.SnapShotFlags == 0 && monitorApplications[display_config][hwnd].Count > 1)
                             {
-                                Log.Error("discard capture when closing window {0}", windowTitle[hwnd]);
+                                Log.Error("視窗關閉時捨棄擷取資料 {0}", windowTitle[hwnd]);
                                 monitorApplications[display_config][hwnd].Remove(dm);
                                 dm = monitorApplications[display_config][hwnd].Last();
                             }
@@ -2980,13 +2980,13 @@ namespace PersistentWindows.Common
             {
                 if (debugWindows.Contains(hwnd))
                 {
-                    Log.Event("WinEvent received {0} \"{1}\" {2:x4}", eventType, GetWindowTitle(hwnd), hwnd.ToInt32());
+                    Log.Event("收到 WinEvent {0}「{1}」{2:x4}", eventType, GetWindowTitle(hwnd), hwnd.ToInt32());
 
                 #if DEBUG
                     RECT screenPosition = new RECT();
                     User32.GetWindowRect(hwnd, ref screenPosition);
                     var process = GetProcess(hwnd);
-                    string log = string.Format("Received message of process {0} at ({1}, {2}) of size {3} x {4} with title: {5}",
+                    string log = string.Format("收到行程 {0} 的訊息，位置 ({1}, {2})，大小 {3} x {4}，標題：{5}",
                         (process == null) ? "" : process.ProcessName,
                         screenPosition.Left,
                         screenPosition.Top,
@@ -3152,14 +3152,14 @@ namespace PersistentWindows.Common
                         case User32Events.EVENT_SYSTEM_MOVESIZESTART:
                             if (freezeCapture)
                             {
-                                Log.Event($"recognize {curDisplayKey} as user session");
+                                Log.Event($"將 {curDisplayKey} 辨識為使用者工作階段");
                                 freezeCapture = false; //unlock unknown display session as normal
                             }
 
                             if ((User32.GetKeyState(0x11) & 0x8000) != 0 //ctrl key pressed
                                 && (User32.GetKeyState(0x10) & 0x8000) != 0) //shift key pressed
                             {
-                                Log.Event("turn off auto-restore for window {0}", GetWindowTitle(hwnd));
+                                Log.Event("關閉視窗 {0} 的自動還原", GetWindowTitle(hwnd));
                                 noRestoreWindows.Add(hwnd);
                             }
                             break;
@@ -3171,7 +3171,7 @@ namespace PersistentWindows.Common
 
                             if (freezeCapture)
                             {
-                                Log.Event($"recognize {curDisplayKey} as user session");
+                                Log.Event($"將 {curDisplayKey} 辨識為使用者工作階段");
                                 freezeCapture = false; //unlock unknown display session as normal
                             }
 
@@ -3192,7 +3192,7 @@ namespace PersistentWindows.Common
                                 var diff = now.Subtract(lastUnminimizeTime);
                                 if (diff.TotalMilliseconds < 200)
                                 {
-                                    Log.Error($"window \"{title}\" is hidden by tidytab");
+                                    Log.Error($"視窗「{title}」被 tidytab 隱藏");
                                     tidyTabWindows.Add(hwnd);
                                     if (lastUnminimizeWindow != IntPtr.Zero)
                                         tidyTabWindows.Add(lastUnminimizeWindow);
@@ -3206,7 +3206,7 @@ namespace PersistentWindows.Common
                             /*
                             if (freezeCapture)
                             {
-                                Log.Event($"recognize {curDisplayKey} as user session");
+                                Log.Event($"將 {curDisplayKey} 辨識為使用者工作階段");
                                 freezeCapture = false; //unlock unknown display session as normal
                             }
                             */
@@ -3238,7 +3238,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
         }
 
@@ -3255,7 +3255,7 @@ namespace PersistentWindows.Common
                     {
                         if ((snapshot_flags | acc_flags) == acc_flags)
                         {
-                            Log.Event($"trim redundant snapshot record for {windowTitle[hwnd]}");
+                            Log.Event($"修剪 {windowTitle[hwnd]} 多餘的快照記錄");
                             monitorApplications[displayKey][hwnd].RemoveAt(i);
                         }
                         acc_flags |= snapshot_flags;
@@ -3272,7 +3272,7 @@ namespace PersistentWindows.Common
                     if (snapshot_flags != 0)
                         continue;
 
-                    Log.Trace($"trim regular record for {windowTitle[hwnd]}");
+                    Log.Trace($"修剪 {windowTitle[hwnd]} 的一般記錄");
                     monitorApplications[displayKey][hwnd].RemoveAt(i);
                     break; //remove one record in each iteration
                 }
@@ -3310,7 +3310,7 @@ namespace PersistentWindows.Common
 
             if (restoringSnapshot)
             {
-                Log.Error("wait for snapshot {0} restore to finish", snapshotId);
+                Log.Error("等待快照 {0} 還原完成", snapshotId);
                 return false;
             }
 
@@ -3337,7 +3337,7 @@ namespace PersistentWindows.Common
 
                 var now = DateTime.Now;
                 snapshotTakenTime[curDisplayKey][snapshotId] = now;
-                Log.Event("Snapshot {0} is captured", snapshotId);
+                Log.Event("已擷取快照 {0}", snapshotId);
             }
 
             WriteDataDump();
@@ -3348,7 +3348,7 @@ namespace PersistentWindows.Common
         {
             if (restoringSnapshot)
             {
-                Log.Error("wait for snapshot {0} restore to finish", snapshotId);
+                Log.Error("等待快照 {0} 還原完成", snapshotId);
                 return;
             }
 
@@ -3371,7 +3371,7 @@ namespace PersistentWindows.Common
             snapshotId = id;
             restoringFromMem = true;
             StartRestoreTimer(milliSecond: 0);
-            Log.Event("restore snapshot {0}", id);
+            Log.Event("還原快照 {0}", id);
         }
 
         private void CaptureCursorPos(string displayKey)
@@ -3471,7 +3471,7 @@ namespace PersistentWindows.Common
                 | SetWindowPosFlags.IgnoreResize
             );
 
-            Log.Error("Fix topmost window {0} {1}", GetWindowTitle(hWnd), ok.ToString());
+            Log.Error("修正最上層視窗 {0} {1}", GetWindowTitle(hWnd), ok.ToString());
 
             if (IsWindowTopMost(hWnd))
             {
@@ -3482,7 +3482,7 @@ namespace PersistentWindows.Common
                     | SetWindowPosFlags.IgnoreMove
                     | SetWindowPosFlags.IgnoreResize
                 );
-                Log.Error("Second try to fix topmost window {0} {1}", GetWindowTitle(hWnd), ok.ToString());
+                Log.Error("第二次嘗試修正最上層視窗 {0} {1}", GetWindowTitle(hWnd), ok.ToString());
             }
 
             return ok;
@@ -3501,7 +3501,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
         }
 
@@ -3593,7 +3593,7 @@ namespace PersistentWindows.Common
                 | SetWindowPosFlags.IgnoreMove
                 | SetWindowPosFlags.IgnoreResize
             );
-            Log.Event("Bring foreground window {0} to bottom", GetWindowTitle(hwnd));
+            Log.Event("將前景視窗 {0} 移至最下層", GetWindowTitle(hwnd));
         }
 
         public void SwitchForeBackground(IntPtr hwnd, bool strict_dps_check = true, bool toForeground=false, bool updateBackgroundPos=false)
@@ -3677,7 +3677,7 @@ namespace PersistentWindows.Common
             /*
             if (prev == IntPtr.Zero)
             {
-                Log.Trace("avoid restore to top most for window {0}", GetWindowTitle(hWnd));
+                Log.Trace("避免將視窗 {0} 還原為最上層", GetWindowTitle(hWnd));
                 return 0; // issue 21, avoiding restore to top z-order
             }
             */
@@ -3700,10 +3700,10 @@ namespace PersistentWindows.Common
                 | SetWindowPosFlags.IgnoreResize
             );
 
-            Log.Trace("Restore zorder {2} by repositioning window \"{0}\" under \"{1}\"",
+            Log.Trace("重新將視窗「{0}」置於「{1}」下方以還原 Z 順序 {2}",
                 GetWindowTitle(hWnd),
                 GetWindowTitle(prev),
-                ok ? "succeeded" : "failed");
+                ok ? "成功" : "失敗");
 
             return ok ? 1 : -1;
         }
@@ -3717,7 +3717,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception e)
             {
-                Log.Error(e.ToString());
+                Log.Error(e);
             }
             return false;
         }
@@ -3765,7 +3765,7 @@ namespace PersistentWindows.Common
 
                 if (debugWindows.Contains(hWnd))
                 {
-                    string log = string.Format("Captured {0} '{1}' fullscreen:{2} minimized:{3} visible:{4} at {5} {6, -8}",
+                    string log = string.Format("已擷取 {0}「{1}」全螢幕:{2} 最小化:{3} 可見:{4} 於 {5} {6, -8}",
                         curDisplayMetrics.HWnd.ToString("X"),
                         curDisplayMetrics.Title,
                         curDisplayMetrics.IsFullScreen,
@@ -3776,7 +3776,7 @@ namespace PersistentWindows.Common
                         );
                     Log.Event(log);
 
-                    string log2 = string.Format("    WindowPlacement.NormalPosition at {0}",
+                    string log2 = string.Format("    WindowPlacement.NormalPosition 位於 {0}",
                         curDisplayMetrics.WindowPlacement.NormalPosition.ToString());
                     Log.Event(log2);
                 }
@@ -3882,7 +3882,7 @@ namespace PersistentWindows.Common
                 string displayKey = GetDisplayKey();
                 if (!displayKey.Equals(curDisplayKey))
                 {
-                    Log.Trace("Ignore capture request for non-current display setting {0}", displayKey);
+                    Log.Trace("忽略非目前顯示設定 {0} 的擷取要求", displayKey);
                     return;
                 }
 
@@ -3891,14 +3891,14 @@ namespace PersistentWindows.Common
                     if (!normalSessions.Contains(curDisplayKey))
                     {
                         normalSessions.Add(curDisplayKey);
-                        Log.Trace("normal session {0} due to user move", curDisplayKey, userMove);
+                        Log.Trace("使用者移動了視窗，將 {0} 視為一般工作階段", curDisplayKey, userMove);
                     }
                     CaptureApplicationsOnCurrentDisplays(displayKey, saveToDB: saveToDB); //implies auto delayed capture
                 }
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
 
         }
@@ -3960,7 +3960,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
         }
 
@@ -4011,7 +4011,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
 
             iconBusy = false;
@@ -4049,11 +4049,11 @@ namespace PersistentWindows.Common
                     snapshotTakenTime[displayKey][MaxSnapshots + 1] = snapshotTakenTime[displayKey][MaxSnapshots];
                 snapshotTakenTime[displayKey][MaxSnapshots] = time;
 
-                Log.Trace("Capture time {0}", time);
+                Log.Trace("擷取時間 {0}", time);
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
         }
 
@@ -4092,7 +4092,7 @@ namespace PersistentWindows.Common
                     if (snapshotTakenTime[curDisplayKey].ContainsKey(MaxSnapshots + 1))
                     {
                         snapshotTakenTime[curDisplayKey][MaxSnapshots] = snapshotTakenTime[curDisplayKey][MaxSnapshots + 1];
-                        Log.Error("undo capture of {0} at {1}", curDisplayKey, lastCaptureTime);
+                        Log.Error("復原 {0} 於 {1} 的擷取資料", curDisplayKey, lastCaptureTime);
                     }
                 }
             }
@@ -4103,7 +4103,7 @@ namespace PersistentWindows.Common
             User32.SetThreadDpiAwarenessContextSafe(User32.DPI_AWARENESS_CONTEXT_UNAWARE);
 
             Log.Trace("");
-            Log.Trace("Capturing windows for display setting {0}", displayKey);
+            Log.Trace("正在擷取顯示設定 {0} 的視窗", displayKey);
 
             int pendingEventCnt = pendingMoveEvents.Count;
             pendingMoveEvents.Clear();
@@ -4171,7 +4171,7 @@ namespace PersistentWindows.Common
                         }
                         catch (Exception ex)
                         {
-                            Log.Error(ex.ToString());
+                            Log.Error(ex);
                         }
                     }
 
@@ -4184,7 +4184,7 @@ namespace PersistentWindows.Common
                 // too many pending window moves, they are probably initiated by OS instead of user,
                 // defer capture
                 StartCaptureTimer();
-                Log.Trace("defer capture");
+                Log.Trace("延後擷取");
             }
             else lock(restoreLock)
             {
@@ -4203,7 +4203,7 @@ namespace PersistentWindows.Common
                     // whether these are user moves is still doubtful
                     // defer acknowledge of user action by one more cycle
                     StartCaptureTimer();
-                    Log.Trace("further defer capture");
+                    Log.Trace("再次延後擷取");
                 }
                 else if (displayKey.Equals(curDisplayKey))
                 {
@@ -4212,12 +4212,12 @@ namespace PersistentWindows.Common
                         // confirmed user moves
                         RecordLastUserActionTime(time: DateTime.Now, displayKey: displayKey);
                         userMove = false;
-                        Log.Trace("{0} windows captured\n", movedWindows);
+                        Log.Trace("已擷取 {0} 個視窗\n", movedWindows);
                     }
                 }
                 else
                 {
-                    Log.Error("reject obsolete request to capture {0}", displayKey);
+                    Log.Error("拒絕過期的擷取要求 {0}", displayKey);
                 }
             }
         }
@@ -4326,9 +4326,9 @@ namespace PersistentWindows.Common
                 if (hwnd != kid && prevDisplayMetrics != null)
                 {
                     if (prevDisplayMetrics.Title != curDisplayMetrics.Title)
-                        Log.Error($"{hwnd.ToString("X")} Inherit position data from killed window {prevDisplayMetrics.Title} with different title {curDisplayMetrics.Title} {prevDisplayMetrics.HWnd.ToString("X")}");
+                        Log.Error($"{hwnd.ToString("X")} 沿用已關閉視窗「{prevDisplayMetrics.Title}」的位置資料，標題已改為「{curDisplayMetrics.Title}」{prevDisplayMetrics.HWnd.ToString("X")}");
                     else
-                        Log.Error($"{hwnd.ToString("X")} Inherit position data from killed window {prevDisplayMetrics.Title} {prevDisplayMetrics.HWnd.ToString("X")}");
+                        Log.Error($"{hwnd.ToString("X")} 沿用已關閉視窗「{prevDisplayMetrics.Title}」的位置資料 {prevDisplayMetrics.HWnd.ToString("X")}");
 
                     if (dualPosSwitchWindows.Contains(kid))
                     {
@@ -4339,7 +4339,7 @@ namespace PersistentWindows.Common
                     ResolveWindowHandleCollision(hwnd);
                 }
                 else
-                    Log.Error($"{hwnd.ToString("X")} Inherit position data from existing window 0x{kid.ToString("X")} for {curDisplayMetrics.Title}");
+                    Log.Error($"{hwnd.ToString("X")} 沿用現有視窗 0x{kid.ToString("X")} 的位置資料，套用於「{curDisplayMetrics.Title}」");
 
                 if (initialized && autoRestoreNewWindowToLastCapture)
                 {
@@ -4348,12 +4348,12 @@ namespace PersistentWindows.Common
                         // Don't restore to an off-screen position from a killed window
                         if (IsRectOffScreen(prevDisplayMetrics.ScreenPosition))
                         {
-                            Log.Error($"skip inherit off-screen position for {GetWindowTitle(hwnd)}");
+                            Log.Error($"略過沿用畫面外的位置 {GetWindowTitle(hwnd)}");
                         }
                         else
                         {
                             if (windowTitle.ContainsKey(hwnd))
-                            Log.Trace($"restore {windowTitle[hwnd]} to last captured position");
+                            Log.Trace($"將 {windowTitle[hwnd]} 還原到最後擷取的位置");
 
                             restoreSingleWindow = true;
                             restoringFromMem = true;
@@ -4574,7 +4574,7 @@ namespace PersistentWindows.Common
                 if (prevDisplayMetrics.ProcessId != curDisplayMetrics.ProcessId
                     && prevDisplayMetrics.ClassName == curDisplayMetrics.ClassName)
                 {
-                    Log.Error("Window with title {0},{1}, process changed from {2} to {3}",
+                    Log.Error("標題為 {0}、{1} 的視窗，行程由 {2} 變更為 {3}",
                         GetWindowTitle(hwnd), curDisplayMetrics.Title,
                         prevDisplayMetrics.ProcessId, curDisplayMetrics.ProcessId
                         );
@@ -4609,7 +4609,7 @@ namespace PersistentWindows.Common
                 {
                     if (sessionActive)
                     {
-                        //Log.Error("reject minimized window move {0}", GetWindowTitle(hwnd));
+                        //Log.Error("拒絕最小化視窗的移動 {0}", GetWindowTitle(hwnd));
                         return false; //do not capture unexpected minimized window movement (by the app or OS)
                     }
 
@@ -4637,7 +4637,7 @@ namespace PersistentWindows.Common
                     if (IsScaleFactorChanged(prevDisplayMetrics.ScreenPosition.Width, prevDisplayMetrics.ScreenPosition.Height,
                             curDisplayMetrics.ScreenPosition.Width, curDisplayMetrics.ScreenPosition.Height))
                     {
-                        Log.Error($"Reject unexpected scale factor change for {GetWindowTitle(hwnd)}");
+                        Log.Error($"拒絕 {GetWindowTitle(hwnd)} 非預期的縮放比例變更");
                         return false;
                     }
                     moved = true;
@@ -4693,7 +4693,7 @@ namespace PersistentWindows.Common
             if (restoringFromDB || restoringSnapshot)
                 normalSessions.Add(curDisplayKey);
 
-            Log.Trace("Restore timer expired");
+            Log.Trace("還原計時器到期");
             process.PriorityClass = ProcessPriorityClass.High;
 
             lock (restoreLock)
@@ -4738,7 +4738,7 @@ namespace PersistentWindows.Common
                     }
                     catch (Exception ex)
                     {
-                        Log.Error(ex.ToString());
+                        Log.Error(ex);
                     }
 
                     restoreTimes++;
@@ -4758,7 +4758,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
 
         }
@@ -4794,7 +4794,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
 
             return false;
@@ -4836,14 +4836,14 @@ namespace PersistentWindows.Common
                 style = User32.GetWindowLong(hwnd, User32.GWL_STYLE);
                 if ((style & (long)WindowStyleFlags.CAPTION) == 0L)
                 {
-                    Log.Error("no need to restore full screen window {0}", GetWindowTitle(hwnd));
+                    Log.Error("全螢幕視窗 {0} 不需要還原", GetWindowTitle(hwnd));
                     return;
                 }
                 /*
                 style |= (long)WindowStyleFlags.CAPTION;
                 User32.SetWindowLong(hwnd, User32.GWL_STYLE, style);
                 User32.ShowWindow(hwnd, User32.SW_RESTORE);
-                Log.Error("restore caption style for {0}", GetWindowTitle(hwnd));
+                Log.Error("還原 {0} 的標題列樣式", GetWindowTitle(hwnd));
                 */
             }
 
@@ -4862,9 +4862,9 @@ namespace PersistentWindows.Common
 
                 if (wrong_screen)
                 {
-                    Log.Error($"target full-screen {target_rect}");
+                    Log.Error($"目標全螢幕區域 {target_rect}");
                     User32.MoveWindow(hwnd, target_rect.Left, target_rect.Top, target_rect.Width, target_rect.Height, true);
-                    Log.Error("fix wrong screen for {0}", GetWindowTitle(hwnd));
+                    Log.Error("修正 {0} 所在的錯誤螢幕", GetWindowTitle(hwnd));
                 }
             }
 
@@ -4881,7 +4881,7 @@ namespace PersistentWindows.Common
             Thread.Sleep(double_clck_interval);
             User32.mouse_event(MouseAction.MOUSEEVENTF_LEFTDOWN | MouseAction.MOUSEEVENTF_LEFTUP,
                 0, 0, 0, UIntPtr.Zero);
-            Log.Error("restore full screen window {0}", GetWindowTitle(hwnd));
+            Log.Error("還原全螢幕視窗 {0}", GetWindowTitle(hwnd));
 
             Thread.Sleep(3 * double_clck_interval);
 
@@ -4891,7 +4891,7 @@ namespace PersistentWindows.Common
                 return;
             }
 
-            Log.Error("fail to restore full screen window {0}", GetWindowTitle(hwnd));
+            Log.Error("無法還原全螢幕視窗 {0}", GetWindowTitle(hwnd));
 
             User32.mouse_event(MouseAction.MOUSEEVENTF_LEFTDOWN | MouseAction.MOUSEEVENTF_LEFTUP,
                 0, 0, 0, UIntPtr.Zero);
@@ -4899,7 +4899,7 @@ namespace PersistentWindows.Common
             User32.mouse_event(MouseAction.MOUSEEVENTF_LEFTDOWN | MouseAction.MOUSEEVENTF_LEFTUP,
                 0, 0, 0, UIntPtr.Zero);
 
-            Log.Error("double restore full screen window {0}", GetWindowTitle(hwnd));
+            Log.Error("重複還原全螢幕視窗 {0}", GetWindowTitle(hwnd));
 
             Thread.Sleep(3 * double_clck_interval);
             style = User32.GetWindowLong(hwnd, User32.GWL_STYLE);
@@ -4908,7 +4908,7 @@ namespace PersistentWindows.Common
                 return;
             }
 
-            Log.Error("fail to restore full screen window {0}", GetWindowTitle(hwnd));
+            Log.Error("無法還原全螢幕視窗 {0}", GetWindowTitle(hwnd));
         }
 
         private void RestoreSnapWindow(IntPtr hwnd, RECT target_pos)
@@ -4929,7 +4929,7 @@ namespace PersistentWindows.Common
                         && Math.Abs(intersect.Height - target_pos.Height) < 10)
                     {
                         User32.MoveWindow(hwnd, intersect.Left, intersect.Top, intersect.Width, intersect.Height, true);
-                        Log.Error("restore snap window {0}", GetWindowTitle(hwnd));
+                        Log.Error("還原貼齊視窗 {0}", GetWindowTitle(hwnd));
                         break;
                     }
                 }
@@ -4970,7 +4970,7 @@ namespace PersistentWindows.Common
                 if (deferOnTimeout)
                 {
                     EnqueueDeferredCommand(hWnd, msg, wParam);
-                    Log.Error("slow window {0:X4} '{1}', deferring cmd 0x{2:X}/0x{3:X}", hWnd.ToInt64(), GetWindowTitle(hWnd), msg, wParam);
+                    Log.Error("視窗 {0:X4}「{1}」回應緩慢，延後指令 0x{2:X}/0x{3:X}", hWnd.ToInt64(), GetWindowTitle(hWnd), msg, wParam);
                 }
                 return false;
             }
@@ -4991,7 +4991,7 @@ namespace PersistentWindows.Common
             if (deferredCommands.Count == 0)
                 return;
 
-            Log.Event("Slow-retry: {0} window(s) had deferred sync commands", deferredCommands.Count);
+            Log.Event("緩慢重試：有 {0} 個視窗的同步指令被延後", deferredCommands.Count);
 
             foreach (var kvp in deferredCommands)
             {
@@ -5005,7 +5005,7 @@ namespace PersistentWindows.Common
                     int rc = User32.SendMessageTimeout(hWnd, cmd.Item1, (uint)cmd.Item2, 0,
                         User32.SMTO_ABORTIFHUNG | User32.SMTO_NORMAL, SyncCommandRetryTimeoutMs, out result);
                     if (rc == 0)
-                        Log.Error("Slow-retry timeout for '{0}' cmd 0x{1:X}/0x{2:X}", GetWindowTitle(hWnd), cmd.Item1, cmd.Item2);
+                        Log.Error("「{0}」緩慢重試逾時，指令 0x{1:X}/0x{2:X}", GetWindowTitle(hWnd), cmd.Item1, cmd.Item2);
                 }
             }
 
@@ -5055,12 +5055,12 @@ namespace PersistentWindows.Common
             /*
             if (sourceRect.Width != targetRect.Width && sourceRect.Height != targetRect.Height)
             {
-                Log.Error("wait taskbar stabilize");
+                Log.Error("等待工作列穩定");
                 return false;
             }
             */
 
-            Log.Event($"move taskbar from {sourceRect} to {targetRect}");
+            Log.Event($"將工作列從 {sourceRect} 移動到 {targetRect}");
 
             IntPtr hTaskBar = GetRealTaskBar(hwnd);
             User32.GetWindowRect(hTaskBar, ref sourceRect);
@@ -5187,7 +5187,7 @@ namespace PersistentWindows.Common
             if (deltaWidth != 0)
             {
                 //restore width
-                Log.Error("restore width of taskbar window {0}", GetWindowTitle(hwnd));
+                Log.Error("還原工作列視窗 {0} 的寬度", GetWindowTitle(hwnd));
 
                 start_y = sourceRect.Top + sourceRect.Height / 2;
                 if (left_edge)
@@ -5206,7 +5206,7 @@ namespace PersistentWindows.Common
             else
             {
                 //restore height
-                Log.Error("restore height of taskbar window {0}", GetWindowTitle(hwnd));
+                Log.Error("還原工作列視窗 {0} 的高度", GetWindowTitle(hwnd));
 
                 start_x = sourceRect.Left + sourceRect.Width / 2;
                 if (top_edge)
@@ -5286,7 +5286,7 @@ namespace PersistentWindows.Common
             User32.SetThreadDpiAwarenessContextSafe(User32.DPI_AWARENESS_CONTEXT_UNAWARE);
 
             Log.Info("");
-            Log.Info("Restoring windows pass {0} for {1}", restoreTimes, displayKey);
+            Log.Info("第 {0} 回合還原 {1} 的視窗", restoreTimes, displayKey);
 
             DateTime lastCaptureTime = time;
 
@@ -5346,7 +5346,7 @@ namespace PersistentWindows.Common
 
 #if DEBUG
                 if (choice != null)
-                    Log.Trace("restore window position with matching process name {0}", choice.ProcessName);
+                    Log.Trace("以相符的行程名稱 {0} 還原視窗位置", choice.ProcessName);
 #endif
                 return choice;
             }
@@ -5469,11 +5469,11 @@ namespace PersistentWindows.Common
                 }
             }
 
-            Log.Trace("Restore time {0}", printRestoreTime);
+            Log.Trace("還原時間點 {0}", printRestoreTime);
             if (sWindow == IntPtr.Zero)
             if (restoreTimes == 0)
             {
-                Log.Event("Start restoring window layout back to {0} for display setting {1}", printRestoreTime, curDisplayKey);
+                Log.Event("開始將顯示設定 {1} 的視窗佈局還原到 {0}", printRestoreTime, curDisplayKey);
             }
 
             bool batchZorderFix = false;
@@ -5499,7 +5499,7 @@ namespace PersistentWindows.Common
                 if (prevDisplayMetrics == null)
                 {
                     if (restoringSnapshot && restoreTimes == 0 && windowProcessName.ContainsKey(hWnd))
-                        Log.Error("no previous record found for window {0} {1}", GetWindowTitle(hWnd), windowProcessName[hWnd]);
+                        Log.Error("找不到視窗 {0} {1} 的先前記錄", GetWindowTitle(hWnd), windowProcessName[hWnd]);
                     continue;
                 }
 
@@ -5508,7 +5508,7 @@ namespace PersistentWindows.Common
                     Process process = GetProcess(hWnd);
                     if (process != null && !process.Responding)
                     {
-                        Log.Error("restore unresponsive window {0}", GetWindowTitle(hWnd));
+                        Log.Error("還原無回應的視窗 {0}", GetWindowTitle(hWnd));
                         unResponsiveWindows.Add(hWnd);
                         //continue;
                     }
@@ -5538,7 +5538,7 @@ namespace PersistentWindows.Common
                     {
                         if (IsRectOffScreen(prevDisplayMetrics.WindowPlacement.NormalPosition))
                         {
-                            Log.Error("skip restore {0} due to off-screen target position, Rect = {1}", GetWindowTitle(hWnd), rect.ToString());
+                            Log.Error("目標位置在畫面之外，略過還原 {0}，Rect = {1}", GetWindowTitle(hWnd), rect.ToString());
                             continue;
                         }
                     }
@@ -5552,7 +5552,7 @@ namespace PersistentWindows.Common
                     if (!IsTaskbarAligned(hWnd))
                     {
                         //not ready to drag
-                        Log.Error("Taskbar not aligned");
+                        Log.Error("工作列尚未對齊");
                         continue;
                     }
 
@@ -5593,7 +5593,7 @@ namespace PersistentWindows.Common
                             continue;
                         }
                         HideWindow(hWnd);
-                        Log.Error("keep invisible window {0}", GetWindowTitle(hWnd));
+                        Log.Error("保留隱藏的視窗 {0}", GetWindowTitle(hWnd));
                         continue;
                     }
                     if (prevDisplayMetrics.IsInvisible || restoreTimes > 0)
@@ -5614,7 +5614,7 @@ namespace PersistentWindows.Common
                         }
 
                         if (action_taken)
-                            Log.Error("keep minimized window {0}", GetWindowTitle(hWnd));
+                            Log.Error("保留最小化的視窗 {0}", GetWindowTitle(hWnd));
                         continue;
                     }
                 }
@@ -5644,7 +5644,7 @@ namespace PersistentWindows.Common
                 {
                     if (curDisplayMetrics.IsMinimized)
                     {
-                        Log.Error("restore minimized window to full screen {0}", GetWindowTitle(hWnd));
+                        Log.Error("將最小化視窗還原為全螢幕 {0}", GetWindowTitle(hWnd));
                         need_move_window = false;
                         restore_fullscreen = true;
                         User32.ShowWindow(hWnd, (int)ShowWindowCommands.Normal);
@@ -5674,7 +5674,7 @@ namespace PersistentWindows.Common
                     }
                     else if (prevDisplayMetrics.IsFullScreen)
                     {
-                        Log.Error("recover full screen window {0}", GetWindowTitle(hWnd));
+                        Log.Error("復原全螢幕視窗 {0}", GetWindowTitle(hWnd));
                         long style = User32.GetWindowLong(hWnd, User32.GWL_STYLE);
                         if (IsRdpWindow(hWnd) && ((style & (long)WindowStyleFlags.CAPTION)) != 0L)
                         {
@@ -5719,7 +5719,7 @@ namespace PersistentWindows.Common
                         }
                         else
                         {
-                            Log.Error($"keep window size for floating window {GetWindowTitle(hWnd)}");
+                            Log.Error($"保留浮動視窗 {GetWindowTitle(hWnd)} 的大小");
                             success &= User32.MoveWindow(hWnd, rect.Left, rect.Top, curDisplayMetrics.ScreenPosition.Width, curDisplayMetrics.ScreenPosition.Height, true);
                         }
 
@@ -5754,7 +5754,7 @@ namespace PersistentWindows.Common
                 if (!success)
                 {
                     string error = new Win32Exception(Marshal.GetLastWin32Error()).Message;
-                    Log.Error(error);
+                    Log.Error("還原視窗「{0}」失敗：{1}", GetWindowTitle(hWnd), error);
                 }
             }
 
@@ -5817,11 +5817,11 @@ namespace PersistentWindows.Common
                     }
 
                     if (!batchRestoreResult)
-                        Log.Error("batch restore z-order failed");
+                        Log.Error("批次還原 Z 順序失敗");
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex.ToString());
+                    Log.Error(ex);
                 }
             }
 
@@ -5854,7 +5854,7 @@ namespace PersistentWindows.Common
                 }
             }
 
-            Log.Trace("Restored windows position for display setting {0}", displayKey);
+            Log.Trace("已還原顯示設定 {0} 的視窗位置", displayKey);
 
             if (restoringFromDB && restoreTimes == 0 && !autoInitialRestoreFromDB) using (var persistDB = new LiteDatabase(persistDbName))
             {
@@ -5959,7 +5959,7 @@ namespace PersistentWindows.Common
                                 }
 
 
-                                Log.Event("launch process {0}", processPath);
+                                Log.Event("啟動行程 {0}", processPath);
                                 string batFile = Path.Combine(appDataFolder, $"pw_exec{i}.bat");
                                 ++i;
                                 //Process.Start(batFile);
@@ -5996,7 +5996,7 @@ namespace PersistentWindows.Common
                                         }
                                         if (!found_in_home)
                                         {
-                                            Log.Error($"Could not locate folder {dir}, open home instead");
+                                            Log.Error($"找不到資料夾 {dir}，改為開啟首頁");
                                             dir = ".";
                                         }
 
@@ -6023,7 +6023,7 @@ namespace PersistentWindows.Common
                             }
                             catch (Exception ex)
                             {
-                                Log.Error(ex.ToString());
+                                Log.Error(ex);
                             }
                     }
                 }
@@ -6094,7 +6094,7 @@ namespace PersistentWindows.Common
                 }
                 catch(Exception ex)
                 {
-                    Log.Error(ex.ToString());
+                    Log.Error(ex);
                     //process might have been terminated
                     return false;
                 }
@@ -6156,7 +6156,7 @@ namespace PersistentWindows.Common
             }
             catch(Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
 
             return path;
@@ -6214,7 +6214,7 @@ namespace PersistentWindows.Common
                                 User32.MoveWindow(hwnd, 100, 100, rect.Width > 0 ? rect.Width : 800, rect.Height > 0 ? rect.Height : 600, true);
                         }
 
-                        Log.Error("Force restore window {0} {1}", dm.ProcessName, GetWindowTitle(hwnd));
+                        Log.Error("強制還原視窗 {0} {1}", dm.ProcessName, GetWindowTitle(hwnd));
                     }
                 }
             }

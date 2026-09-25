@@ -447,7 +447,7 @@ namespace PersistentWindows.SystrayShell
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex.ToString());
+                    Log.Error(ex);
                 }
 
                 webCommanderEnabled = true;
@@ -514,7 +514,7 @@ namespace PersistentWindows.SystrayShell
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex.ToString());
+                    Log.Error(ex);
                 }
             }
             else //選單目前為「停用升級通知」
@@ -576,7 +576,7 @@ namespace PersistentWindows.SystrayShell
             catch (Exception ex)
             {
                 StopMenuAutoCloseTimer();
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
         }
 

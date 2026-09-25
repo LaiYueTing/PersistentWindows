@@ -296,7 +296,7 @@ namespace PersistentWindows.Common
             }
             catch (Exception ex)
             {
-                Log.Error(ex.ToString());
+                Log.Error(ex);
             }
         }
 
