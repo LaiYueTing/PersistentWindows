@@ -146,6 +146,13 @@ namespace PersistentWindows.Common
         private const int RestoreWatchdogInterval = 2000; //檢查間隔
         public int restoreTimeout = 90000; //還原總時限，0 表示停用看門狗
         private DateTime restoreBusyStartTime = DateTime.MinValue;
+
+        // 下一回合還原是否已經排定（0 或 1），見 ExtendRestoreOnWindowMove
+        private int restoreTimerPending = 0;
+
+        // 本次還原期間因視窗位置變動而延後結束的次數與最後一個視窗，供看門狗說明卡住的原因
+        private int restoreExtendCount = 0;
+        private IntPtr restoreExtendLastWindow = IntPtr.Zero;
         private const int immediateFinishRestore = 20;
         private HashSet<IntPtr> restoredWindows = new HashSet<IntPtr>();
         private HashSet<IntPtr> topmostWindowsFixed = new HashSet<IntPtr>();
@@ -3024,8 +3031,7 @@ namespace PersistentWindows.Common
                         if (((remoteSession && !restoreSingleWindow) || restoreTimes >= MinRestoreTimes) && !restoringSnapshot)
                         {
                             // restore is not finished as long as window location keeps changing
-                            CancelRestoreFinishedTimer();
-                            StartRestoreTimer();
+                            ExtendRestoreOnWindowMove(hwnd);
                         }
                     }
                 }
@@ -3844,12 +3850,36 @@ namespace PersistentWindows.Common
                 if (!restoringFromDB && !restoringSnapshot)
                     milliSecond = UserForcedRestoreLatency;
             }
+            Interlocked.Exchange(ref restoreTimerPending, 1);
             restoreTimer.Change(milliSecond, Timeout.Infinite);
         }
 
         private void CancelRestoreTimer()
         {
+            Interlocked.Exchange(ref restoreTimerPending, 0);
             restoreTimer.Change(Timeout.Infinite, Timeout.Infinite);
+        }
+
+        /// <summary>
+        /// 還原期間有視窗位置變動：延後還原結束，並確保還有下一回合。
+        ///
+        /// 原本每個事件都呼叫 StartRestoreTimer()，把下一回合的倒數重設回 RestoreLatency。
+        /// 只要有視窗移動得比這個間隔更頻繁（遊戲、影片、動畫、剪取工具重疊等），
+        /// 下一回合就永遠輪不到，結束計時器也一直被取消，圖示便卡在忙碌狀態，
+        /// 而且沒有任何視窗被記為無回應，看門狗只能回報「無法判定」。
+        ///
+        /// 這裡改為只在尚未排定時才排下一回合、不重設倒數，
+        /// 還原便能每隔 RestoreLatency 前進一回合，到 MaxRestoreTimes 後正常結束。
+        /// </summary>
+        private void ExtendRestoreOnWindowMove(IntPtr hwnd)
+        {
+            CancelRestoreFinishedTimer();
+
+            Interlocked.Increment(ref restoreExtendCount);
+            restoreExtendLastWindow = hwnd;
+
+            if (Interlocked.CompareExchange(ref restoreTimerPending, 0, 0) == 0)
+                StartRestoreTimer();
         }
 
         private void StartRestoreFinishedTimer(int milliSecond)
@@ -3967,9 +3997,11 @@ namespace PersistentWindows.Common
         /// <summary>
         /// 強制結束卡住的還原週期。
         ///
-        /// 刻意不取得 restoreLock：還原正卡住時就是持有該鎖，取鎖只會讓看門狗一起卡死。
-        /// 這裡只清除使用者看得到的狀態（忙碌圖示與擷取停用），
-        /// 並讓進行中的還原迴圈自然收斂，不強制中斷執行緒。
+        /// 卡住有兩種情況：
+        /// 一是某一回合卡在無回應的視窗上，此時該執行緒持有 restoreLock；
+        /// 二是沒有任何一回合在跑，只是還原遲遲沒走到結束（例如被持續移動的視窗一直延後）。
+        /// 因此只以 TryEnter 試著取鎖，絕不等待，否則看門狗會跟著卡死。
+        /// 兩種情況都會清除使用者看得到的狀態（忙碌圖示與擷取停用），不強制中斷執行緒。
         /// </summary>
         private void ForceFinishStuckRestore(TimeSpan elapsed)
         {
@@ -3990,11 +4022,36 @@ namespace PersistentWindows.Common
                 // 取視窗標題本身也可能對無回應視窗逾時，忽略即可
             }
 
-            Log.Error("還原逾時 {0:F1} 秒（第 {1} 回合），強制結束並恢復圖示。無回應或緩慢的視窗：{2}",
-                elapsed.TotalSeconds, restoreTimes,
-                stuckWindows.Count == 0 ? "無法判定" : String.Join("、", stuckWindows.ToArray()));
+            string reason;
+            if (stuckWindows.Count > 0)
+            {
+                reason = "無回應或緩慢的視窗：" + String.Join("、", stuckWindows.ToArray());
+            }
+            else if (restoreExtendCount > 0)
+            {
+                string mover;
+                try
+                {
+                    mover = GetWindowTitle(restoreExtendLastWindow);
+                }
+                catch (Exception)
+                {
+                    mover = null;
+                }
 
-            // 讓進行中的還原迴圈在下一次檢查時走向結束，而不是再排下一回合
+                reason = String.Format("沒有無回應的視窗，但還原期間「{0}」的位置持續變動，結束時間被延後 {1} 次",
+                    String.IsNullOrEmpty(mover) ? String.Format("0x{0:X}", restoreExtendLastWindow.ToInt64()) : mover,
+                    restoreExtendCount);
+            }
+            else
+            {
+                reason = "無回應或緩慢的視窗：無法判定";
+            }
+
+            Log.Error("還原逾時 {0:F1} 秒（第 {1} 回合），強制結束並恢復圖示。{2}",
+                elapsed.TotalSeconds, restoreTimes, reason);
+
+            // 先讓進行中的還原迴圈走向結束，確保就算後面的重設失敗也不會再排下一回合
             restoreTimes = MaxRestoreTimes;
             restoreHalted = false;
 
@@ -4020,6 +4077,30 @@ namespace PersistentWindows.Common
             sessionActive = true;
 
             DisarmRestoreWatchdog();
+
+            // 沒有還原卡在視窗上（鎖是空的）時，把回合數重設乾淨。
+            // 若停在上限，下一次觸發的還原會被當成已經跑完而直接略過。
+            // 鎖被占住代表有一回合卡在視窗上，就維持上限，讓它回來後自己走向結束。
+            try
+            {
+                if (Monitor.TryEnter(restoreLock))
+                {
+                    try
+                    {
+                        CancelRestoreTimer();
+                        CancelRestoreFinishedTimer();
+                        ResetState();
+                    }
+                    finally
+                    {
+                        Monitor.Exit(restoreLock);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex);
+            }
         }
 
         private void ResetState()
@@ -4684,6 +4765,8 @@ namespace PersistentWindows.Common
 
         private void TimerRestore(object state)
         {
+            Interlocked.Exchange(ref restoreTimerPending, 0);
+
             if (pauseAutoRestore && !restoringFromDB && !restoringSnapshot)
                 return;
 
@@ -4715,6 +4798,8 @@ namespace PersistentWindows.Common
                 // start of a new restore cycle: clear deferred-command state from any previously aborted cycle
                 slowResponseWindows.Clear();
                 deferredCommands.Clear();
+                restoreExtendCount = 0;
+                restoreExtendLastWindow = IntPtr.Zero;
             }
 
             try
