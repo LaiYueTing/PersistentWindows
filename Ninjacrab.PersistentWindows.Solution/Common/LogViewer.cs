@@ -14,7 +14,7 @@ namespace PersistentWindows.Common
     /// <summary>
     /// 原生 Win32 記錄檢視對話框。
     ///
-    /// 直接讀出記錄檔並提供搜尋、複製與匯出，
+    /// 直接讀出記錄檔並提供搜尋、類型篩選、複製與匯出，
     /// 對應說明文件中回報問題時需要附上記錄的流程。
     /// </summary>
     public class LogViewer
@@ -25,10 +25,14 @@ namespace PersistentWindows.Common
         private const int IdcFilterLabel = 1302;
         private const int IdcFilterEdit = 1303;
         private const int IdcLogList = 1304;
+        private const int IdcKindLabel = 1305;
         private const int IdcButtonRefresh = 1401;
         private const int IdcButtonCopy = 1402;
         private const int IdcButtonExport = 1403;
         private const int IdcCheckAutoRefresh = 1405;
+        private const int IdcCheckError = 1406;
+        private const int IdcCheckEvent = 1407;
+        private const int IdcCheckInfo = 1408;
         private const int IdcButtonClose = NativeDialog.IDCANCEL;
 
         /// <summary>背景載入完成時回送的自訂訊息。</summary>
@@ -43,7 +47,7 @@ namespace PersistentWindows.Common
         #region 版面配置常數 (對話框單位)
 
         private const short DialogWidth = 560;
-        private const short DialogHeight = 300;
+        private const short DialogHeight = 316;
         private const short Margin = 7;
         private const short Gap = 5;
         private const short ButtonBarGap = 7;
@@ -56,6 +60,7 @@ namespace PersistentWindows.Common
         private const short ButtonExportWidth = 92;
         private const short ButtonCloseWidth = 58;
         private const short CheckAutoRefreshWidth = 76;
+        private const short CheckKindWidth = 52;
 
         private const short DialogFontSize = 9;
 
@@ -175,8 +180,24 @@ namespace PersistentWindows.Common
                 (short)(DialogWidth - Margin - CheckAutoRefreshWidth), 19,
                 CheckAutoRefreshWidth, LabelHeight + 2, "自動更新(&A)");
 
+            uint checkStyle = NativeDialog.WS_CHILD | NativeDialog.WS_VISIBLE | NativeDialog.WS_TABSTOP
+                | NativeDialog.BS_AUTOCHECKBOX;
+
+            builder.AddControl(DialogTemplateBuilder.AtomStatic, IdcKindLabel, labelStyle, 0,
+                Margin, 38, 40, LabelHeight, "類型：");
+
+            short kindX = (short)(Margin + 42);
+            builder.AddControl(DialogTemplateBuilder.AtomButton, IdcCheckError, checkStyle, 0,
+                kindX, 36, CheckKindWidth, LabelHeight + 2, "錯誤(&E)");
+            kindX += CheckKindWidth + Gap;
+            builder.AddControl(DialogTemplateBuilder.AtomButton, IdcCheckEvent, checkStyle, 0,
+                kindX, 36, CheckKindWidth, LabelHeight + 2, "事件(&V)");
+            kindX += CheckKindWidth + Gap;
+            builder.AddControl(DialogTemplateBuilder.AtomButton, IdcCheckInfo, checkStyle, 0,
+                kindX, 36, CheckKindWidth, LabelHeight + 2, "資訊(&I)");
+
             builder.AddControl("SysListView32", IdcLogList, listStyle, NativeDialog.WS_EX_CLIENTEDGE,
-                Margin, 38, contentWidth, 220, String.Empty);
+                Margin, 54, contentWidth, 220, String.Empty);
 
             short buttonTop = (short)(DialogHeight - Margin - ButtonHeight);
             short x = Margin;
@@ -191,7 +212,7 @@ namespace PersistentWindows.Common
             x += ButtonCopyWidth + Gap;
 
             builder.AddControl(DialogTemplateBuilder.AtomButton, IdcButtonExport, buttonStyle, 0,
-                x, buttonTop, ButtonExportWidth, ButtonHeight, "匯出文字檔(&E) ...");
+                x, buttonTop, ButtonExportWidth, ButtonHeight, "匯出文字檔(&S) ...");
 
             builder.AddControl(DialogTemplateBuilder.AtomButton, IdcButtonClose, buttonStyle, 0,
                 (short)(DialogWidth - Margin - ButtonCloseWidth), buttonTop,
@@ -281,8 +302,11 @@ namespace PersistentWindows.Common
             logList.InsertColumn(1, "類型", 70, NativeDialog.LVCFMT_LEFT);
             logList.InsertColumn(2, "內容", 600, NativeDialog.LVCFMT_LEFT);
 
-            NativeDialog.SendMessageW(NativeDialog.GetDlgItem(dialogHandle, IdcCheckAutoRefresh),
-                NativeDialog.BM_SETCHECK, new IntPtr(NativeDialog.BST_CHECKED), IntPtr.Zero);
+            foreach (int id in new[] { IdcCheckAutoRefresh, IdcCheckError, IdcCheckEvent, IdcCheckInfo })
+            {
+                NativeDialog.SendMessageW(NativeDialog.GetDlgItem(dialogHandle, id),
+                    NativeDialog.BM_SETCHECK, new IntPtr(NativeDialog.BST_CHECKED), IntPtr.Zero);
+            }
 
             LayoutControls();
             User32.SetForegroundWindow(dialogHandle);
@@ -358,6 +382,13 @@ namespace PersistentWindows.Common
                     ExportToFile();
                     return new IntPtr(1);
 
+                case IdcCheckError:
+                case IdcCheckEvent:
+                case IdcCheckInfo:
+                    if (!loading)
+                        ApplyFilter();
+                    return new IntPtr(1);
+
                 case IdcCheckAutoRefresh:
                     // 重新勾選時立刻對齊最新內容
                     if (IsAutoRefreshEnabled)
@@ -422,6 +453,19 @@ namespace PersistentWindows.Common
             MoveControl(IdcCheckAutoRefresh, margin + contentWidth - autoWidth,
                 y + (editHeight - labelHeight) / 2, autoWidth, labelHeight + Dy(2));
             y += editHeight + gapY;
+
+            int checkHeight = labelHeight + Dy(2);
+            int checkWidth = Dx(CheckKindWidth);
+            MoveControl(IdcKindLabel, margin, y + (checkHeight - labelHeight) / 2, filterLabelWidth, labelHeight);
+
+            int kindX = margin + filterLabelWidth + Dx(2);
+            foreach (int id in new[] { IdcCheckError, IdcCheckEvent, IdcCheckInfo })
+            {
+                MoveControl(id, kindX, y, checkWidth, checkHeight);
+                kindX += checkWidth + gap;
+            }
+
+            y += checkHeight + gapY;
 
             int buttonTop = height - marginY - buttonHeight;
             int listHeight = buttonTop - Dy(ButtonBarGap) - y;
@@ -604,10 +648,21 @@ namespace PersistentWindows.Common
             savedSelection = -1;
         }
 
+        private bool IsChecked(int controlId)
+        {
+            IntPtr control = NativeDialog.GetDlgItem(dialogHandle, controlId);
+            if (control == IntPtr.Zero)
+                return false;
+
+            return NativeDialog.SendMessageW(control, NativeDialog.BM_GETCHECK,
+                IntPtr.Zero, IntPtr.Zero).ToInt32() == NativeDialog.BST_CHECKED;
+        }
+
         private void ApplyFilter()
         {
             string keyword = GetFilterText();
-            shownRecords = LogReader.Filter(allRecords, keyword);
+            shownRecords = LogReader.Filter(allRecords, keyword,
+                IsChecked(IdcCheckError), IsChecked(IdcCheckEvent), IsChecked(IdcCheckInfo));
 
             logList.Clear();
             for (int i = 0; i < shownRecords.Count; ++i)
@@ -631,11 +686,16 @@ namespace PersistentWindows.Common
                 return;
             }
 
-            string status = String.Format("共 {0} 筆記錄（連按兩下可查看完整內容）", allRecords.Count);
+            int errorCount, eventCount, infoCount;
+            LogReader.CountByKind(allRecords, out errorCount, out eventCount, out infoCount);
+
+            string status = String.Format("共 {0} 筆記錄：錯誤 {1}、事件 {2}、資訊 {3}",
+                allRecords.Count, errorCount, eventCount, infoCount);
             if (shownRecords.Count != allRecords.Count)
-                status += String.Format("，符合搜尋條件 {0} 筆", shownRecords.Count);
+                status += String.Format("，目前顯示 {0} 筆", shownRecords.Count);
+            status += "（連按兩下可查看完整內容）";
             if (allRecords.Count >= LogReader.DefaultMaxRecords)
-                status += String.Format("（已達 {0} 筆上限，更舊的記錄請直接開啟記錄檔）", LogReader.DefaultMaxRecords);
+                status += String.Format("　已達 {0} 筆上限，更舊的記錄請直接開啟記錄檔", LogReader.DefaultMaxRecords);
 
             SetStatus(status);
         }

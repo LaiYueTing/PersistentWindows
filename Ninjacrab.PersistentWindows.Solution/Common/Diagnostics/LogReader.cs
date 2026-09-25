@@ -121,31 +121,76 @@ namespace PersistentWindows.Common.Diagnostics
         /// </summary>
         public static List<LogRecord> Filter(List<LogRecord> records, string keyword)
         {
+            return Filter(records, keyword, true, true, true);
+        }
+
+        /// <summary>
+        /// 依關鍵字與類型篩選記錄。三個類型全不勾選時結果為空，
+        /// 這是使用者明確的選擇，不特別代償。
+        /// </summary>
+        public static List<LogRecord> Filter(List<LogRecord> records, string keyword,
+            bool showError, bool showEvent, bool showInfo)
+        {
             if (records == null)
                 return new List<LogRecord>();
 
-            if (String.IsNullOrEmpty(keyword) || keyword.Trim().Length == 0)
-                return new List<LogRecord>(records);
+            bool hasKeyword = !String.IsNullOrEmpty(keyword) && keyword.Trim().Length > 0;
+            string needle = hasKeyword ? keyword.Trim() : null;
 
-            string needle = keyword.Trim();
             var result = new List<LogRecord>();
             foreach (var record in records)
             {
-                if (record.Message != null
-                    && record.Message.IndexOf(needle, StringComparison.CurrentCultureIgnoreCase) >= 0)
-                {
-                    result.Add(record);
+                if (!IsKindShown(record.EventId, showError, showEvent, showInfo))
                     continue;
-                }
 
-                if (record.KindText.IndexOf(needle, StringComparison.CurrentCultureIgnoreCase) >= 0
-                    || record.TimeText.IndexOf(needle, StringComparison.Ordinal) >= 0)
-                {
+                if (!hasKeyword || MatchesKeyword(record, needle))
                     result.Add(record);
-                }
             }
 
             return result;
+        }
+
+        private static bool IsKindShown(int eventId, bool showError, bool showEvent, bool showInfo)
+        {
+            if (eventId == LogRecord.EventIdError)
+                return showError;
+
+            if (eventId == LogRecord.EventIdInfo)
+                return showInfo;
+
+            return showEvent;
+        }
+
+        private static bool MatchesKeyword(LogRecord record, string needle)
+        {
+            if (record.Message != null
+                && record.Message.IndexOf(needle, StringComparison.CurrentCultureIgnoreCase) >= 0)
+                return true;
+
+            return record.KindText.IndexOf(needle, StringComparison.CurrentCultureIgnoreCase) >= 0
+                || record.TimeText.IndexOf(needle, StringComparison.Ordinal) >= 0;
+        }
+
+        /// <summary>依類型統計筆數，供狀態列顯示。</summary>
+        public static void CountByKind(List<LogRecord> records,
+            out int errorCount, out int eventCount, out int infoCount)
+        {
+            errorCount = 0;
+            eventCount = 0;
+            infoCount = 0;
+
+            if (records == null)
+                return;
+
+            foreach (var record in records)
+            {
+                if (record.EventId == LogRecord.EventIdError)
+                    ++errorCount;
+                else if (record.EventId == LogRecord.EventIdInfo)
+                    ++infoCount;
+                else
+                    ++eventCount;
+            }
         }
 
         /// <summary>

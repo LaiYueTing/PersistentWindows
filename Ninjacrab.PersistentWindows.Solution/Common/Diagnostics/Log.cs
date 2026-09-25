@@ -245,7 +245,7 @@ namespace PersistentWindows.Common.Diagnostics
         ///
         /// 上游把這類訊息全走 Log.Error，因為 Trace 與 Info 只在 DEBUG 版輸出，
         /// Release 版等於看不到；結果記錄檢視裡幾乎每一行都標成「錯誤」。
-        /// 這裡讓資訊等級真的會輸出。
+        /// 這裡讓資訊等級真的會輸出，在記錄檢視中可以單獨篩掉。
         /// </summary>
         public static void Info(string format, params object[] args)
         {

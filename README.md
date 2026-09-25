@@ -168,5 +168,5 @@ REG ADD "HKCU\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers
 
 - PersistentWindows 提供了豐富的命令列選項可供自訂，完整清單請參閱[快速說明頁面](https://www.github.com/kangyu-california/PersistentWindows/blob/master/Help.md)。另可參考[如何自訂命令列選項](https://github.com/kangyu-california/PersistentWindows/discussions/313)。
 - 除了平面佈局之外，視窗的 Z 順序也可以一併還原。此功能預設僅在手動還原快照時啟用；若要在自動還原時也修正 Z 順序，請以 `-fix_zorder=1` 選項執行 PersistentWindows。
-- 為了協助診斷問題，最快的方式是從系統匣選單選擇「檢視記錄(&L) ...」，按「複製到剪貼簿(&C)」或「匯出文字檔(&E) ...」，再把內容附到問題回報中。
+- 為了協助診斷問題，最快的方式是從系統匣選單選擇「檢視記錄(&L) ...」，按「複製到剪貼簿(&C)」或「匯出文字檔(&S) ...」，再把內容附到問題回報中。
 - 也可以直接附上記錄檔 `%LOCALAPPDATA%\PersistentWindows\PersistentWindows.log`（可攜模式則在程式資料夾）。本分支不再寫入 Windows 事件記錄，因此上游說明中「到事件檢視器搜尋事件識別碼 9990 與 9999」的做法不適用。
