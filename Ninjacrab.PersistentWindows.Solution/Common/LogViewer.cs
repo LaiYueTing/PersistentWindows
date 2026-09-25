@@ -14,9 +14,8 @@ namespace PersistentWindows.Common
     /// <summary>
     /// 原生 Win32 記錄檢視對話框。
     ///
-    /// PersistentWindows 的記錄寫在 Windows 事件記錄中（事件識別碼 9990 與 9999），
-    /// 原本只能開啟事件檢視器再自行篩選。這裡直接讀出來並提供搜尋、複製與匯出，
-    /// 對應說明文件中回報問題時需要附上事件記錄的流程。
+    /// 直接讀出記錄檔並提供搜尋、複製與匯出，
+    /// 對應說明文件中回報問題時需要附上記錄的流程。
     /// </summary>
     public class LogViewer
     {
@@ -29,7 +28,6 @@ namespace PersistentWindows.Common
         private const int IdcButtonRefresh = 1401;
         private const int IdcButtonCopy = 1402;
         private const int IdcButtonExport = 1403;
-        private const int IdcButtonEventViewer = 1404;
         private const int IdcCheckAutoRefresh = 1405;
         private const int IdcButtonClose = NativeDialog.IDCANCEL;
 
@@ -56,7 +54,6 @@ namespace PersistentWindows.Common
         private const short ButtonRefreshWidth = 70;
         private const short ButtonCopyWidth = 92;
         private const short ButtonExportWidth = 92;
-        private const short ButtonEventViewerWidth = 96;
         private const short ButtonCloseWidth = 58;
         private const short CheckAutoRefreshWidth = 76;
 
@@ -80,7 +77,6 @@ namespace PersistentWindows.Common
         private List<LogRecord> shownRecords = new List<LogRecord>();
         private string loadError;
         private volatile bool loading;
-        private volatile bool fromFile;
 
         // 自動更新：只在記錄檔真的變動時才重載，避免無謂地清空清單
         private long lastFileLength = -1;
@@ -196,10 +192,6 @@ namespace PersistentWindows.Common
 
             builder.AddControl(DialogTemplateBuilder.AtomButton, IdcButtonExport, buttonStyle, 0,
                 x, buttonTop, ButtonExportWidth, ButtonHeight, "匯出文字檔(&E) ...");
-            x += ButtonExportWidth + Gap;
-
-            builder.AddControl(DialogTemplateBuilder.AtomButton, IdcButtonEventViewer, buttonStyle, 0,
-                x, buttonTop, ButtonEventViewerWidth, ButtonHeight, "開啟事件檢視器(&V)");
 
             builder.AddControl(DialogTemplateBuilder.AtomButton, IdcButtonClose, buttonStyle, 0,
                 (short)(DialogWidth - Margin - ButtonCloseWidth), buttonTop,
@@ -366,10 +358,6 @@ namespace PersistentWindows.Common
                     ExportToFile();
                     return new IntPtr(1);
 
-                case IdcButtonEventViewer:
-                    OpenEventViewer();
-                    return new IntPtr(1);
-
                 case IdcCheckAutoRefresh:
                     // 重新勾選時立刻對齊最新內容
                     if (IsAutoRefreshEnabled)
@@ -445,8 +433,7 @@ namespace PersistentWindows.Common
             int x = margin;
             x = LayoutButton(IdcButtonRefresh, x, buttonTop, ButtonRefreshWidth, buttonHeight, gap);
             x = LayoutButton(IdcButtonCopy, x, buttonTop, ButtonCopyWidth, buttonHeight, gap);
-            x = LayoutButton(IdcButtonExport, x, buttonTop, ButtonExportWidth, buttonHeight, gap);
-            LayoutButton(IdcButtonEventViewer, x, buttonTop, ButtonEventViewerWidth, buttonHeight, gap);
+            LayoutButton(IdcButtonExport, x, buttonTop, ButtonExportWidth, buttonHeight, gap);
 
             int closeWidth = Dx(ButtonCloseWidth);
             MoveControl(IdcButtonClose, width - margin - closeWidth, buttonTop, closeWidth, buttonHeight);
@@ -496,8 +483,8 @@ namespace PersistentWindows.Common
         #region 載入與顯示
 
         /// <summary>
-        /// 於背景執行緒讀取事件記錄。掃描上萬筆事件可能耗時數秒，
-        /// 不能在對話框執行緒同步進行，否則視窗會整個沒有回應。
+        /// 於背景執行緒讀取記錄檔。記錄檔可能有數 MB，
+        /// 不在對話框執行緒同步進行，以免視窗沒有回應。
         /// </summary>
         private void StartLoad()
         {
@@ -514,21 +501,9 @@ namespace PersistentWindows.Common
             {
                 string error;
 
-                // 記錄檔為主要來源：讀取即時，且不需要任何特殊權限。
-                // 只有在記錄檔不存在或沒有內容時，才回頭掃描 Windows 事件記錄，
-                // 讓舊版留下的記錄仍然看得到。
+                // 記錄檔是唯一來源：讀取即時，且不需要任何特殊權限
                 var records = LogReader.ReadFile(Log.LogFilePath, LogReader.DefaultMaxRecords, out error);
-                fromFile = records.Count > 0;
                 RememberFileState();
-
-                if (records.Count == 0)
-                {
-                    string eventError;
-                    records = LogReader.Read(productName,
-                        LogReader.DefaultMaxRecords, LogReader.DefaultMaxScan, out eventError);
-                    if (error == null)
-                        error = eventError;
-                }
 
                 allRecords = records;
                 loadError = error;
@@ -644,7 +619,7 @@ namespace PersistentWindows.Common
 
             if (!String.IsNullOrEmpty(loadError))
             {
-                SetStatus("無法讀取事件記錄：" + loadError);
+                SetStatus("無法讀取記錄檔：" + loadError);
                 return;
             }
 
@@ -656,13 +631,11 @@ namespace PersistentWindows.Common
                 return;
             }
 
-            string source = fromFile ? "記錄檔" : "Windows 事件記錄";
-            string status = String.Format("共 {0} 筆記錄，來源：{1}（連按兩下可查看完整內容）",
-                allRecords.Count, source);
+            string status = String.Format("共 {0} 筆記錄（連按兩下可查看完整內容）", allRecords.Count);
             if (shownRecords.Count != allRecords.Count)
                 status += String.Format("，符合搜尋條件 {0} 筆", shownRecords.Count);
             if (allRecords.Count >= LogReader.DefaultMaxRecords)
-                status += String.Format("（已達 {0} 筆上限，較舊的記錄請用事件檢視器查看）", LogReader.DefaultMaxRecords);
+                status += String.Format("（已達 {0} 筆上限，更舊的記錄請直接開啟記錄檔）", LogReader.DefaultMaxRecords);
 
             SetStatus(status);
         }
@@ -741,20 +714,6 @@ namespace PersistentWindows.Common
             {
                 Log.Error(ex);
                 ShowMessage("匯出失敗：" + ex.Message);
-            }
-        }
-
-        private void OpenEventViewer()
-        {
-            try
-            {
-                Shell32.ShellExecuteW(dialogHandle, "open", "eventvwr.msc", null, null,
-                    NativeDialog.SW_SHOWNORMAL);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex);
-                ShowMessage("無法開啟事件檢視器。");
             }
         }
 

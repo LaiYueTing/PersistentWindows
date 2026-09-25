@@ -1,4 +1,4 @@
-# PersistentWindows（繁體中文版）
+﻿# PersistentWindows（繁體中文版）
 
 > **這是修改版分支。** 本專案 fork 自 [kangyu-california/PersistentWindows](https://github.com/kangyu-california/PersistentWindows)，
 > 基底版本 5.76。相對於上游的變更如下：
@@ -158,7 +158,7 @@ REG ADD "HKCU\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers
 ![image](https://github.com/kangyu-california/PersistentWindows/assets/59128756/d410aa87-4552-42da-b7a4-e9d7ab1947b1)
 - 如果還原過程中有某個視窗失去回應，PersistentWindows 可能會卡在「忙碌」狀態（系統匣圖示變成紅色）。您可以在工作管理員中使用「分析等待鏈」找出問題視窗。失去回應的應用程式可能需要立即熱更新，或是直接結束它，PersistentWindows 才能繼續進行。
 
-  本分支加入了還原逾時保護：還原若超過 90 秒仍未完成，會自動強制結束該次還原、把圖示恢復成閒置並重新開放自動擷取，並在事件檢視器中記錄是哪些視窗造成卡住（搜尋事件識別碼 9999，關鍵字「還原逾時」）。時限可用 `-restore_timeout` 調整，設為 0 則停用。
+  本分支加入了還原逾時保護：還原若超過 90 秒仍未完成，會自動強制結束該次還原、把圖示恢復成閒置並重新開放自動擷取，並在記錄中寫下是哪些視窗造成卡住（在「檢視記錄(&L) ...」中搜尋「還原逾時」）。時限可用 `-restore_timeout` 調整，設為 0 則停用。
   請注意這是防止介面卡死的保護措施，並不能讓無回應的視窗被正確還原——該視窗仍需要您自行處理。
 
   <img src="https://user-images.githubusercontent.com/59128756/184041561-5389f540-c61a-4ee7-90ff-f9f725ba3682.png" alt="image" width="500"/>
@@ -169,8 +169,4 @@ REG ADD "HKCU\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers
 - PersistentWindows 提供了豐富的命令列選項可供自訂，完整清單請參閱[快速說明頁面](https://www.github.com/kangyu-california/PersistentWindows/blob/master/Help.md)。另可參考[如何自訂命令列選項](https://github.com/kangyu-california/PersistentWindows/discussions/313)。
 - 除了平面佈局之外，視窗的 Z 順序也可以一併還原。此功能預設僅在手動還原快照時啟用；若要在自動還原時也修正 Z 順序，請以 `-fix_zorder=1` 選項執行 PersistentWindows。
 - 為了協助診斷問題，最快的方式是從系統匣選單選擇「檢視記錄(&L) ...」，按「複製到剪貼簿(&C)」或「匯出文字檔(&E) ...」，再把內容附到問題回報中。
-- 也可以手動操作：開啟事件檢視器，找到「Windows 記錄檔」→「應用程式」，搜尋事件識別碼 9990 與 9999，並將這些事件的內容複製貼上到新的問題回報中，如下圖所示。
-  <img src="https://user-images.githubusercontent.com/59128756/190280503-a96ce57f-a6f0-4aad-9748-221bbb4f9207.png" alt="image" width="800"/>
-- 如果需要回報的事件太多，請在事件檢視器的「動作」窗格中點選「篩選目前的記錄檔」，選取最近一小時內所有 9990 與 9999 的事件，再點選「將篩選的記錄檔另存為」，選擇「文字 (*.txt)」格式，然後將儲存下來的事件檔案附加到問題回報中。
-
-  ![image](https://github.com/kangyu-california/PersistentWindows/assets/59128756/ce4ee2e7-8662-4eb5-9a49-cbe53d30f911)
+- 也可以直接附上記錄檔 `%LOCALAPPDATA%\PersistentWindows\PersistentWindows.log`（可攜模式則在程式資料夾）。本分支不再寫入 Windows 事件記錄，因此上游說明中「到事件檢視器搜尋事件識別碼 9990 與 9999」的做法不適用。

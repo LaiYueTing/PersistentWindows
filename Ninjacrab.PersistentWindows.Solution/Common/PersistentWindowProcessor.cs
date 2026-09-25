@@ -2813,7 +2813,7 @@ namespace PersistentWindows.Common
         // Transient shell UI windows (Alt+Tab switcher, Task View, Win10/11 XAML switcher overlay)
         // appear briefly on every Alt+Tab and get destroyed within ~500ms. PW must never track them:
         // capturing them takes captureLock and pollutes monitorApplications; their destroy event then
-        // re-acquires the lock and writes a "discard capture" entry to the Windows event log.
+        // re-acquires the lock and writes a "discard capture" entry to the log file.
         private static bool IsTransientShellWindow(IntPtr hwnd)
         {
             try

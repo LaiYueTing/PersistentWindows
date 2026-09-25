@@ -3,22 +3,20 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Diagnostics;
 
 namespace PersistentWindows.Common.Diagnostics
 {
     public class Log
     {
-        static EventLog eventLog;
         public static bool silent = false;
-        static bool registered = false;
 
-        // 檔案記錄
+        // 記錄檔
         //
-        // 只寫 Windows 事件記錄並不可靠：註冊事件來源需要系統管理員權限，
+        // 上游把記錄寫進 Windows 事件記錄，但註冊事件來源需要系統管理員權限，
         // 而 EventLog.SourceExists() 在一般權限下甚至會直接擲出 SecurityException
-        // （無法搜尋 Security 與 State 記錄檔）。使用者因此常常什麼記錄都看不到。
-        // 這裡另外寫一份純文字記錄檔，不需要任何特殊權限。
+        // （無法搜尋 Security 與 State 記錄檔）。使用者因此常常什麼記錄都看不到，
+        // 就算看得到也得自己開事件檢視器再篩選。
+        // 現在只寫這份純文字記錄檔，不需要任何特殊權限，記錄檢視也讀得即時。
 
         private const long MaxLogFileBytes = 2 * 1024 * 1024;
         private const int RotatedLogCount = 2;
@@ -30,7 +28,7 @@ namespace PersistentWindows.Common.Diagnostics
         // 可忽略的雜訊錯誤
         //
         // 這兩種失敗在正常運作中會頻繁出現（建立既有檔案、缺少系統管理員權限
-        // 而無法移動別人的視窗），不值得寫進 Windows 事件記錄。
+        // 而無法移動別人的視窗），不是使用者需要處理的問題，記成錯誤只會蓋掉真正的失敗。
         // 但訊息文字是作業系統產生的，在繁體中文系統上是「存取被拒。」之類的中文，
         // 原本寫死的英文比對永遠不會成立，過濾等於失效。
         // 這裡改為在啟動時依錯誤碼取得當地語言訊息，英文字串則保留以相容其他語系。
@@ -87,7 +85,7 @@ namespace PersistentWindows.Common.Diagnostics
         /// <summary>
         /// 設定記錄檔位置並寫出在此之前暫存的內容。
         ///
-        /// Init() 在程式啟動最早期就被呼叫，那時還沒解析命令列、不知道資料夾在哪，
+        /// 程式啟動最早期就可能寫入記錄，那時還沒解析命令列、不知道資料夾在哪，
         /// 因此先把訊息留在記憶體，等這個方法被呼叫後再一次寫出。
         /// </summary>
         public static void SetLogFolder(string folder)
@@ -116,15 +114,16 @@ namespace PersistentWindows.Common.Diagnostics
             }
             catch (Exception)
             {
-                // 無法建立記錄檔時安靜略過，事件記錄仍然可用
+                // 無法建立記錄檔時安靜略過，記錄不能反過來把程式弄壞
             }
         }
 
         /// <summary>
-        /// 移除訊息開頭由 Format() 加上的「時間 :: 」前綴。
+        /// 移除訊息開頭的「時間 :: 」前綴。
         ///
-        /// 事件來源未註冊時（一般權限下的常態），Format() 會在每則訊息前面
-        /// 加上時間戳。記錄檔本身已經有獨立的時間欄位，若不移除就會重複顯示。
+        /// 舊版會在每則訊息前面加上時間戳（為了事件記錄），記錄檔本身已經有
+        /// 獨立的時間欄位，不移除就會重複顯示。現在不再產生這種前綴，
+        /// 但讀取舊記錄檔時仍需要處理。
         /// 只有在前綴確實能解析成日期時才移除，避免誤傷內容中的 "::"。
         /// </summary>
         public static string StripLeadingTimestamp(string message)
@@ -231,69 +230,6 @@ namespace PersistentWindows.Common.Diagnostics
             }
         }
 
-        public static void Init()
-        {
-            eventLog = new EventLog();
-            string app_name = System.Windows.Forms.Application.ProductName;
-            try
-            {
-                if (!EventLog.SourceExists(app_name))
-                {
-                    // CreateEventSource requires administrative privileges
-                    EventLog.CreateEventSource(app_name, "Application");
-                    Console.WriteLine($"Created Event Source '{app_name}'. Please restart the application for changes to take full effect.");
-                    // Note: If you create a new source for a custom log, you might need to restart the computer for changes to take full effect in the Event Viewer.
-                }
-                registered = true;
-                eventLog.Source = app_name;
-            }
-            catch (Exception)
-            {
-                eventLog.Source = "Application";
-            }
-        }
-
-        public static void Exit()
-        {
-            if (eventLog != null)
-                eventLog.Close();
-        }
-
-        /// <summary>
-        /// 寫入 Windows 事件記錄。
-        ///
-        /// 記錄本身絕不能讓程式中斷：Init() 未被呼叫、事件來源未註冊或事件記錄已滿時，
-        /// 這裡一律安靜略過，否則 catch 區塊中的記錄呼叫會再拋一次例外，
-        /// 反而蓋掉原始錯誤並導致行程結束。
-        /// </summary>
-        private static void WriteEntrySafe(string message, int eventId)
-        {
-            var log = eventLog;
-            if (log == null)
-                return;
-
-            try
-            {
-                if (!registered)
-                {
-                    int index = message.IndexOf("::");
-                    if (index >= 0)
-                        message = message.Substring(index + 3);
-                    message = System.Windows.Forms.Application.ProductName + ": " + message;
-                }
-
-                log.WriteEntry(message, EventLogEntryType.Information, eventId, 0);
-            }
-            catch (Exception)
-            {
-                // 無法寫入事件記錄時安靜略過
-            }
-        }
-
-        /// <summary>
-        /// Occurs when something is logged. STATIC EVENT!
-        /// </summary>
-
         public static void Trace(string format, params object[] args)
         {
             if (silent)
@@ -309,8 +245,7 @@ namespace PersistentWindows.Common.Diagnostics
         ///
         /// 上游把這類訊息全走 Log.Error，因為 Trace 與 Info 只在 DEBUG 版輸出，
         /// Release 版等於看不到；結果記錄檢視裡幾乎每一行都標成「錯誤」。
-        /// 這裡讓資訊等級真的會輸出，但只寫記錄檔，不寫 Windows 事件記錄，
-        /// 以免例行雜訊灌爆系統的事件檢視器。
+        /// 這裡讓資訊等級真的會輸出。
         /// </summary>
         public static void Info(string format, params object[] args)
         {
@@ -330,18 +265,13 @@ namespace PersistentWindows.Common.Diagnostics
                 return;
 
             var message = Format(format, args);
-            WriteToFile("錯誤", message);
 
-            if (IsIgnorableError(message))
-            {
-                // 可忽略的雜訊：檔案已存在，或缺少系統管理員權限而無法移動視窗
-                return;
-            }
-
+            // 可忽略的雜訊（檔案已存在、缺少系統管理員權限而無法移動視窗）降為資訊，
+            // 內容仍然留著，但不會佔住「錯誤」這個等級
+            WriteToFile(IsIgnorableError(message) ? "資訊" : "錯誤", message);
 #if DEBUG
             Console.Write(message);
 #endif
-            WriteEntrySafe(message, 9999);
         }
 
         /// <summary>
@@ -378,7 +308,6 @@ namespace PersistentWindows.Common.Diagnostics
 #if DEBUG
             Console.Write(message);
 #endif
-            WriteEntrySafe(message, 9990);
         }
 
         /// <summary>
@@ -394,13 +323,9 @@ namespace PersistentWindows.Common.Diagnostics
                 return "\n";
             }
 
+            // 不再補上時間前綴：那是為了事件記錄而加的，記錄檔本身就有獨立的時間欄位
             bool arg_null = args.Length == 0;
-            if (!registered)
-            return arg_null ? $"{DateTime.Now} :: " + format + "\n":
-                $"{DateTime.Now} :: " + string.Format(format, args) + "\n";
-
-            return arg_null ? format + "\n":
-                string.Format(format, args) + "\n";
+            return arg_null ? format + "\n" : string.Format(format, args) + "\n";
         }
 
     }

@@ -685,7 +685,7 @@ namespace PersistentWindows.Common
             catch (Exception ex)
             {
                 Log.Error(ex);
-                ShowError("還原快照時發生錯誤，詳情請見事件檢視器中的 Log 記錄。");
+                ShowError("還原快照時發生錯誤，詳情請見系統匣選單的「檢視記錄(&L) ...」。");
             }
         }
 
@@ -790,14 +790,14 @@ namespace PersistentWindows.Common
 
                 if (!pwp.SaveCurrentLayoutAsSnapshot(name))
                 {
-                    ShowError("儲存快照失敗，詳情請見事件檢視器中的 Log 記錄。");
+                    ShowError("儲存快照失敗，詳情請見系統匣選單的「檢視記錄(&L) ...」。");
                     return;
                 }
             }
             catch (Exception ex)
             {
                 Log.Error(ex);
-                ShowError("儲存快照失敗，詳情請見事件檢視器中的 Log 記錄。");
+                ShowError("儲存快照失敗，詳情請見系統匣選單的「檢視記錄(&L) ...」。");
                 return;
             }
             finally

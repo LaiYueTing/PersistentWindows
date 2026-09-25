@@ -1,4 +1,4 @@
-## PersistentWindows 快速說明
+﻿## PersistentWindows 快速說明
 
 ### 命令列選項
 
@@ -13,7 +13,7 @@
   | -capture_floating_window=0 | 停用擷取浮動子視窗與對話框視窗的位置
   | -ignore_process "notepad.exe;EXCEL" | 不還原 notepad.exe 與 EXCEL.EXE 這兩個行程的視窗
   | -care_process "notepad.exe;EXCEL" | 只還原 notepad.exe 與 EXCEL.EXE 這兩個行程的視窗
-  | -debug_process "notepad.exe;EXCEL" | 在事件檢視器中輸出 notepad.exe 與 EXCEL.EXE 行程的視窗定位事件 Log。若要對所有行程除錯，請指定萬用字元 "*"
+  | -debug_process "notepad.exe;EXCEL" | 在記錄中輸出 notepad.exe 與 EXCEL.EXE 行程的視窗定位詳細資訊。若要對所有行程除錯，請指定萬用字元 "*"
   | -no_inherit_process "notepad.exe;EXCEL" | 停用 notepad 與 EXCEL 行程的新視窗自動還原
   | -foreground_background_dual_position=0 | 關閉雙位置切換功能
   | -swap_window_pos_when_alt_activate=0 | 關閉 Alt + 點選背景視窗時與前景視窗互換位置的功能
@@ -24,11 +24,11 @@
   | -delay_restart 5 | 5 秒後重新啟動 PersistentWindows。此選項僅在 PersistentWindows 正常啟動失敗時才需要使用。
   | -delay_auto_capture 1.0 | 將視窗移動事件與自動擷取之間的延遲調整為 1.0 秒，預設延遲為 3～4 秒。
   | *-delay_auto_restore 2.5* | 將顯示器開關事件與自動還原之間的延遲調整為 2.5 秒（預設延遲為 1 秒）。此選項有助於避開 Windows 內建還原機制與 PW 還原之間的衝突，若顯示器因為還原啟動過早而無法進入睡眠，此選項也可能有幫助。
-  | -restore_timeout 90 | 還原總時限設為 90 秒，預設即為 90 秒。若還原卡在無回應的視窗上超過此時限，會強制結束該次還原、把系統匣圖示恢復成閒置，並重新開放自動擷取，同時在事件檢視器記錄是哪些視窗卡住。設為 0 可停用此保護
+  | -restore_timeout 90 | 還原總時限設為 90 秒，預設即為 90 秒。若還原卡在無回應的視窗上超過此時限，會強制結束該次還原、把系統匣圖示恢復成閒置，並重新開放自動擷取，同時在記錄中寫下是哪些視窗卡住。設為 0 可停用此保護
   | -redraw_desktop | 還原完成後重繪整個桌面，以防某些視窗的工作區沒有正確更新
   | -fix_zorder=1   | 自動還原時一併保留視窗的 Z 順序。Z 順序代表視窗在重疊視窗堆疊中的前後位置。
   | -fix_offscreen_window=0 | 關閉螢幕外視窗的自動校正
-  | -fix_unminimized_window=0 | 關閉已取消最小化視窗的自動還原。使用此開關可避免啟用視窗時發生非預期的位移，這類位移在事件檢視器中會伴隨事件識別碼 9999：「restore minimized window ....」。
+  | -fix_unminimized_window=0 | 關閉已取消最小化視窗的自動還原。使用此開關可避免啟用視窗時發生非預期的位移，這類位移在記錄中會伴隨「還原最小化視窗 ...」的資訊。
   |-auto_restore_new_display_session_from_db=0| 停用電腦啟動時或首次切換顯示器時從資料庫還原視窗
   |-auto_restore_existing_window_to_last_capture=1 | 開啟 PW 啟動時將既有視窗自動還原至上一次擷取的狀態
   |-auto_restore_new_window_to_last_capture=0 | 關閉將新視窗自動還原至上一次關閉位置的功能
@@ -65,15 +65,13 @@
 ### 記錄檢視介面
 
   * 從系統匣選單選擇「檢視記錄(&L) ...」即可開啟。
-  * 記錄會寫成純文字檔 `%LOCALAPPDATA%\PersistentWindows\PersistentWindows.log`（可攜模式則在程式資料夾），超過 2 MB 會自動輪替並保留兩份舊檔。上游原本只寫入 Windows 事件記錄，但註冊事件來源需要系統管理員權限，一般權限下甚至連查詢都會失敗，因此常常什麼都看不到；檔案記錄不需要任何特殊權限。
-  * 檢視器以記錄檔為主要來源，讀取幾乎即時。記錄檔不存在時會回頭掃描 Windows 事件記錄（事件識別碼 9990 與 9999），讓舊版留下的記錄仍看得到。
+  * 記錄會寫成純文字檔 `%LOCALAPPDATA%\PersistentWindows\PersistentWindows.log`（可攜模式則在程式資料夾），超過 2 MB 會自動輪替並保留兩份舊檔。上游原本只寫入 Windows 事件記錄，但註冊事件來源需要系統管理員權限，一般權限下甚至連查詢都會失敗，因此常常什麼都看不到。本分支改為只寫這份記錄檔，不需要任何特殊權限，也不再寫入 Windows 事件記錄。
   * 支援即時搜尋：輸入關鍵字會同時比對時間、類型與內容。例如輸入「逾時」可快速找出還原被強制結束的紀錄。
   * 在任一列連按兩下可查看完整內容，清單欄寬放不下的長訊息就不會被截斷。
   * 「複製到剪貼簿(&C)」與「匯出文字檔(&E) ...」會輸出目前篩選後的結果，對應回報問題時需要附上記錄的流程。匯出的檔案為帶 BOM 的 UTF-8，記事本可正確顯示中文。
-  * 記錄是在背景讀取的。若需要回頭掃描 Windows 事件記錄，上萬筆可能耗時數秒，期間視窗仍可操作。
   * 預設開啟「自動更新(&A)」，每 2 秒檢查一次記錄檔，只有內容真的變動時才重新載入，並盡量保留原本選取的那一列。取消勾選即可停止自動更新，改以「重新整理(&R)」手動更新。
   * 視窗可自由調整大小，也可以最大化或最小化。
-  * 最多顯示最近 1000 筆，更舊的記錄請用「開啟事件檢視器(&V)」查看。
+  * 最多顯示最近 1000 筆，更舊的記錄請直接以記事本開啟記錄檔（含輪替後的 `.log.1`、`.log.2`）。
   * 以 `-silent` 執行時不會寫入任何記錄，此時清單會是空的。
 
 ### 快照管理介面

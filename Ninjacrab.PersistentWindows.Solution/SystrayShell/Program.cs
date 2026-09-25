@@ -55,7 +55,6 @@ if not errorlevel 1 goto wait_to_finish";
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
-            Log.Init();
             Log.Event($"版本 {Application.ProductVersion}；作業系統版本 {Environment.OSVersion.VersionString}；.NET 版本 {Environment.Version}");
 
             pwp = new PersistentWindowProcessor();

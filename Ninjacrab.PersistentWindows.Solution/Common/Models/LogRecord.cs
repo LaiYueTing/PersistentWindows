@@ -3,7 +3,7 @@
 namespace PersistentWindows.Common.Models
 {
     /// <summary>
-    /// 從 Windows 事件記錄讀回的一筆 PersistentWindows 記錄。
+    /// 從記錄檔讀回的一筆 PersistentWindows 記錄。
     /// </summary>
     public class LogRecord
     {

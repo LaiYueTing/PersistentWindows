@@ -359,7 +359,6 @@ namespace PersistentWindows.SystrayShell
             this.notifyIconMain.Visible = false;
             //this.notifyIconMain.Icon = null;
 
-            Log.Exit();
             Program.Stop();
             Application.Exit();
         }
