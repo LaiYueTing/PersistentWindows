@@ -732,16 +732,17 @@ namespace PersistentWindows.Common
                 return;
             }
 
-            try
+            string error = NativeClipboard.SetText(dialogHandle, text);
+            if (error == null)
             {
-                System.Windows.Forms.Clipboard.SetText(text);
                 SetStatus(String.Format("已複製 {0} 筆記錄到剪貼簿", shownRecords.Count));
+                return;
             }
-            catch (Exception ex)
-            {
-                Log.Error(ex);
-                ShowMessage("複製到剪貼簿失敗，剪貼簿可能正被其他程式占用。");
-            }
+
+            Log.Error("複製記錄到剪貼簿失敗：{0}", error);
+            ShowMessage("複製到剪貼簿失敗：" + error + "。" + Environment.NewLine + Environment.NewLine
+                + "遠端桌面的剪貼簿同步（例如 RustDesk）或剪貼簿管理工具會在內容變動時短暫占用剪貼簿，"
+                + "請稍候再試一次，或改用「匯出文字檔」。");
         }
 
         private void ExportToFile()

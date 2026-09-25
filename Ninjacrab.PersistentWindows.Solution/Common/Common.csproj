@@ -88,6 +88,7 @@
     <Compile Include="WinApiBridge\CallWindowProcedureParam.cs" />
     <Compile Include="WinApiBridge\Display.cs" />
     <Compile Include="WinApiBridge\MonitorInfo.cs" />
+    <Compile Include="WinApiBridge\NativeClipboard.cs" />
     <Compile Include="WinApiBridge\NativeDialog.cs" />
     <Compile Include="WinApiBridge\SetWindowPosFlags.cs" />
     <Compile Include="WinApiBridge\ShowWindowCommands.cs" />
