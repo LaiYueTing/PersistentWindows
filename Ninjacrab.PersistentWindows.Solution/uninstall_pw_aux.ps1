@@ -1,6 +1,6 @@
 ﻿$executablePath = $PSScriptRoot + "\PersistentWindows.exe"
 
-## 移除讓 PersistentWindows.exe 以高 DPI 感知模式執行的註冊表設定
+## 移除讓 PersistentWindows.exe 以高 DPI 感知模式執行的登錄設定
 Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers" -Name $executablePath
 
 ## 可依需要自行修改工作名稱

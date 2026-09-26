@@ -3,7 +3,7 @@ $arguments = "-splash=0"
 
 $executablePath = $PSScriptRoot + "\PersistentWindows.exe"
 
-## 建立註冊表設定，讓 PersistentWindows.exe 以高 DPI 感知模式執行
+## 建立登錄設定，讓 PersistentWindows.exe 以高 DPI 感知模式執行
 $regPath = "HKCU:\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers"
 if (-not (Test-Path $regPath)) {
     New-Item -Path $regPath -Force | Out-Null
