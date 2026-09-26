@@ -193,7 +193,7 @@ namespace PersistentWindows.SystrayShell
             if (!Program.hotkey_window)
                 this.invokeWebCommander.Visible = false;
             //
-            // aboutToolStripMenuItem
+            // viewLogMenuItem
             //
             this.viewLogMenuItem.Name = "viewLogMenuItem";
             this.viewLogMenuItem.Text = "檢視記錄(&L) ...";

@@ -867,9 +867,6 @@ if not errorlevel 1 goto wait_to_finish";
         }
 
         /// <summary>
-        /// 開啟原生 Win32 快照管理對話框。
-        /// </summary>
-        /// <summary>
         /// 開啟原生 Win32 記錄檢視對話框。
         /// </summary>
         static public void ShowLogViewer()
