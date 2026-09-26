@@ -4,7 +4,11 @@ $arguments = "-splash=0"
 $executablePath = $PSScriptRoot + "\PersistentWindows.exe"
 
 ## 建立註冊表設定，讓 PersistentWindows.exe 以高 DPI 感知模式執行
-Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers" -Name $executablePath -Value "~ HIGHDPIAWARE"
+$regPath = "HKCU:\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers"
+if (-not (Test-Path $regPath)) {
+    New-Item -Path $regPath -Force | Out-Null
+}
+Set-ItemProperty -Path $regPath -Name $executablePath -Value "~ HIGHDPIAWARE"
 
 ## 可依需要自行修改工作名稱
 $taskName = "StartPersistentWindows" + $env:username
@@ -33,6 +37,14 @@ $task.Actions[0].Arguments = $arguments
 Set-ScheduledTask -TaskName $taskName -TaskPath $task.TaskPath -Action $task.Actions
 
 ## 設定此工作以最高權限執行
-$principal = New-ScheduledTaskPrincipal -UserId $env:username  -RunLevel Highest
+
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if ($isAdmin) {
+    $principal = New-ScheduledTaskPrincipal -UserId $env:username -RunLevel Highest
+} else {
+    $principal = New-ScheduledTaskPrincipal -UserId $env:username
+    Write-Warning "❌ 建議以系統管理員身分執行，以免發生「存取被拒」錯誤。"
+}
+
 $task.Principal = $principal
 Set-ScheduledTask -TaskName $taskName -TaskPath $task.TaskPath -Principal $principal
