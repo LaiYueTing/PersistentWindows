@@ -26,6 +26,7 @@ namespace PersistentWindows.Common
         private const int IdcSnapshotList = 1002;
         private const int IdcWindowLabel = 1003;
         private const int IdcWindowList = 1004;
+        private const int IdcLayoutLabel = 1005;
         private const int IdcButtonApply = 1101;
         private const int IdcButtonDelete = 1102;
         private const int IdcButtonRename = 1103;
@@ -44,7 +45,7 @@ namespace PersistentWindows.Common
         #region 版面配置常數 (對話框單位)
 
         private const short DialogWidth = 540;
-        private const short DialogHeight = 296;
+        private const short DialogHeight = 308;
         private const short Margin = 7;
         private const short Gap = 5;
 
@@ -160,7 +161,8 @@ namespace PersistentWindows.Common
             var builder = new DialogTemplateBuilder(dialogStyle, NativeDialog.WS_EX_CONTROLPARENT,
                 0, 0, DialogWidth, DialogHeight, WindowTitle, DialogFontSize, DialogFontFace);
 
-            uint labelStyle = NativeDialog.WS_CHILD | NativeDialog.WS_VISIBLE | NativeDialog.SS_LEFTNOWORDWRAP;
+            uint labelStyle = NativeDialog.WS_CHILD | NativeDialog.WS_VISIBLE | NativeDialog.SS_LEFTNOWORDWRAP
+                | NativeDialog.SS_NOPREFIX | NativeDialog.SS_ENDELLIPSIS;
             uint listStyle = NativeDialog.WS_CHILD | NativeDialog.WS_VISIBLE
                 | NativeDialog.WS_TABSTOP | NativeDialog.LVS_REPORT | NativeDialog.LVS_SINGLESEL
                 | NativeDialog.LVS_SHOWSELALWAYS | NativeDialog.LVS_NOSORTHEADER;
@@ -187,8 +189,12 @@ namespace PersistentWindows.Common
                 (short)(DialogWidth - Margin - ButtonRemoveWindowWidth), 111,
                 ButtonRemoveWindowWidth, ButtonHeight, "從快照移除(&X)");
 
+            // 顯示器配置獨立一行：三台以上時字串很長，與右側三顆按鈕擠在同一列會被切掉
+            builder.AddControl(DialogTemplateBuilder.AtomStatic, IdcLayoutLabel, labelStyle, 0,
+                Margin, 130, listWidth, LabelHeight, String.Empty);
+
             builder.AddControl("SysListView32", IdcWindowList, listStyle, NativeDialog.WS_EX_CLIENTEDGE,
-                Margin, 131, listWidth, 123, String.Empty);
+                Margin, 143, listWidth, 123, String.Empty);
 
             short buttonTop = (short)(DialogHeight - Margin - ButtonHeight);
             short x = Margin;
@@ -449,9 +455,9 @@ namespace PersistentWindows.Common
             int buttonTop = height - marginY - buttonHeight;
             int listsBottom = buttonTop - buttonBarGap;
 
-            // 兩組「標籤 + 間距」，外加最後一個清單與按鈕列之間不屬於清單的那段間距，
-            // 扣掉之後 ButtonBarGap 才等於實際看到的間距
-            int listsTotal = listsBottom - marginY - (labelHeight + gapY) * 2 - gapY;
+            // 三組「標籤 + 間距」（上方標籤、詳情標籤、顯示器配置），外加最後一個清單與按鈕列之間
+            // 不屬於清單的那段間距，扣掉之後 ButtonBarGap 才等於實際看到的間距
+            int listsTotal = listsBottom - marginY - (labelHeight + gapY) * 3 - gapY;
             if (listsTotal < Dy(40))
                 listsTotal = Dy(40);
 
@@ -482,6 +488,9 @@ namespace PersistentWindows.Common
                 removeWinWidth, buttonHeight);
 
             y += labelRowHeight + gapY;
+
+            MoveControl(IdcLayoutLabel, margin, y, contentWidth, labelHeight);
+            y += labelHeight + gapY;
 
             int listHeight = windowHeight - (labelRowHeight - labelHeight);
             if (listHeight < Dy(30))
@@ -642,6 +651,7 @@ namespace PersistentWindows.Common
             if (entry == null)
             {
                 NativeDialog.SetDlgItemTextW(dialogHandle, IdcWindowLabel, "快照內部詳情：");
+                NativeDialog.SetDlgItemTextW(dialogHandle, IdcLayoutLabel, String.Empty);
                 UpdateWindowButtonState();
                 return;
             }
@@ -665,10 +675,11 @@ namespace PersistentWindows.Common
                 windowList.InsertRow(i, columns, new IntPtr(i));
             }
 
-            // 清單欄位只放精簡描述，完整的排列順序與桌面座標放在這裡
             NativeDialog.SetDlgItemTextW(dialogHandle, IdcWindowLabel,
-                String.Format("快照內部詳情：{0} — 共 {1} 個視窗　│　{2}",
-                    entry.Name, windows.Count, entry.DisplayLayout));
+                String.Format("快照內部詳情：{0} — 共 {1} 個視窗", entry.Name, windows.Count));
+
+            // 清單欄位只放精簡描述，完整的排列順序與桌面座標放在這一行
+            NativeDialog.SetDlgItemTextW(dialogHandle, IdcLayoutLabel, "顯示器配置：" + entry.DisplayLayout);
         }
 
         private void UpdateButtonState()

@@ -64,6 +64,12 @@ namespace PersistentWindows.Common.WinApiBridge
         public const uint SS_LEFT = 0x00000000;
         public const uint SS_LEFTNOWORDWRAP = 0x0000000C;
 
+        // 不把 & 當成存取鍵（標籤會顯示使用者輸入的快照名稱）
+        public const uint SS_NOPREFIX = 0x00000080;
+
+        // 放不下時在結尾顯示「…」，而不是把字切一半
+        public const uint SS_ENDELLIPSIS = 0x00004000;
+
         public const uint ES_LEFT = 0x00000000;
         public const uint ES_AUTOHSCROLL = 0x00000080;
 

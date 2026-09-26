@@ -122,7 +122,8 @@ namespace PersistentWindows.Common
             var builder = new DialogTemplateBuilder(dialogStyle, NativeDialog.WS_EX_CONTROLPARENT,
                 0, 0, DialogWidth, DialogHeight, WindowTitle, DialogFontSize, DialogFontFace);
 
-            uint labelStyle = NativeDialog.WS_CHILD | NativeDialog.WS_VISIBLE | NativeDialog.SS_LEFTNOWORDWRAP;
+            uint labelStyle = NativeDialog.WS_CHILD | NativeDialog.WS_VISIBLE | NativeDialog.SS_LEFTNOWORDWRAP
+                | NativeDialog.SS_NOPREFIX | NativeDialog.SS_ENDELLIPSIS;
             uint listStyle = NativeDialog.WS_CHILD | NativeDialog.WS_VISIBLE | NativeDialog.WS_TABSTOP
                 | NativeDialog.LVS_REPORT | NativeDialog.LVS_SINGLESEL | NativeDialog.LVS_SHOWSELALWAYS
                 | NativeDialog.LVS_NOSORTHEADER;
