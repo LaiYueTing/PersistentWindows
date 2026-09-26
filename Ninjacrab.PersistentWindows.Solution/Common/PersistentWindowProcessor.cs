@@ -641,10 +641,7 @@ namespace PersistentWindows.Common
                     {
                         swapWindow = false;
                         DateTime t = DateTime.Now - TimeSpan.FromSeconds(1);
-                        restoringFromMem = true;
-                        RestoreApplicationsOnCurrentDisplays(curDisplayKey, prevForeGroundWindow, t);
-                        RestoreApplicationsOnCurrentDisplays(curDisplayKey, hwnd, t);
-                        restoringFromMem = false;
+                        RestoreWindowsFromMemory(t, false, prevForeGroundWindow, hwnd);
 
                         Log.Info("已交換視窗位置");
                     }
@@ -3669,9 +3666,7 @@ namespace PersistentWindows.Common
                         }
                     }
 
-                    restoringFromMem = true;
-                    RestoreApplicationsOnCurrentDisplays(curDisplayKey, hwnd, metrics.CaptureTime);
-                    restoringFromMem = false;
+                    RestoreWindowsFromMemory(metrics.CaptureTime, false, hwnd);
 
                     break;
                 }
@@ -4395,6 +4390,39 @@ namespace PersistentWindows.Common
             return true;
         }
 
+        /// <summary>
+        /// 以記憶體中的擷取資料還原指定的一或兩個視窗。
+        ///
+        /// 原本各處都寫成 restoringFromMem = true → 還原 → restoringFromMem = false。
+        /// 若此時正有整批還原在進行（例如在還原途中擷取快照，順便發現剛開啟的視窗），
+        /// 會把整批還原的旗標蓋成 false，TimerRestore 之後一看到就直接返回，
+        /// 整批還原停在半途、圖示卡在忙碌狀態，只能等看門狗介入。
+        /// 原本也沒有 finally，還原途中出錯會讓旗標永遠停在 true，自動擷取從此被當成還原中。
+        ///
+        /// 這裡改為結束後（包括出錯時）恢復成原本的值。
+        /// </summary>
+        /// <param name="single">是否以「單一視窗」模式還原（對應 restoreSingleWindow）。</param>
+        private void RestoreWindowsFromMemory(DateTime time, bool single, params IntPtr[] windows)
+        {
+            bool previousFromMem = restoringFromMem;
+            bool previousSingle = restoreSingleWindow;
+
+            restoringFromMem = true;
+            if (single)
+                restoreSingleWindow = true;
+
+            try
+            {
+                foreach (var hwnd in windows)
+                    RestoreApplicationsOnCurrentDisplays(curDisplayKey, hwnd, time);
+            }
+            finally
+            {
+                restoringFromMem = previousFromMem;
+                restoreSingleWindow = previousSingle;
+            }
+        }
+
         private bool TryInheritWindow(IntPtr hwnd, IntPtr realHwnd, IntPtr kid, ApplicationDisplayMetrics curDisplayMetrics)
         {
             if (kid == IntPtr.Zero)
@@ -4436,11 +4464,7 @@ namespace PersistentWindows.Common
                             if (windowTitle.ContainsKey(hwnd))
                             Log.Trace($"將 {windowTitle[hwnd]} 還原到最後擷取的位置");
 
-                            restoreSingleWindow = true;
-                            restoringFromMem = true;
-                            RestoreApplicationsOnCurrentDisplays(curDisplayKey, hwnd, prevDisplayMetrics.CaptureTime);
-                            restoreSingleWindow = false;
-                            restoringFromMem = false;
+                            RestoreWindowsFromMemory(prevDisplayMetrics.CaptureTime, true, hwnd);
                             userMove = true;
                             StartCaptureTimer(UserMoveLatency / 2);
                         }
