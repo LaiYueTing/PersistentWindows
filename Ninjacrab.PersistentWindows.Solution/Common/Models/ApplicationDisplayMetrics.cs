@@ -10,6 +10,15 @@ namespace PersistentWindows.Common.Models
 {
     public class ApplicationDisplayMetrics
     {
+        /// <summary>
+        /// 淺層複本。成員都是字串、數值或結構，淺層複製即可得到獨立的一份。
+        /// 寫入資料庫時會改動 Id 等欄位，因此不能直接寫入記憶體中正在使用的那一筆。
+        /// </summary>
+        public ApplicationDisplayMetrics Clone()
+        {
+            return (ApplicationDisplayMetrics)MemberwiseClone();
+        }
+
         // for LiteDB use only
         public int Id { get; set; }
         public Guid Guid { get; set; }

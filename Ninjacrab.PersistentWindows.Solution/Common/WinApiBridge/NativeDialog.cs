@@ -123,6 +123,7 @@ namespace PersistentWindows.Common.WinApiBridge
         public const uint LVM_GETITEMCOUNT = LVM_FIRST + 4;
         public const uint LVM_GETNEXTITEM = LVM_FIRST + 12;
         public const uint LVM_SETITEMSTATE = LVM_FIRST + 43;
+        public const uint LVM_GETITEMSTATE = LVM_FIRST + 44;
         public const uint LVM_ENSUREVISIBLE = LVM_FIRST + 19;
         public const uint LVM_SETCOLUMNWIDTH = LVM_FIRST + 30;
         public const uint LVM_SETEXTENDEDLISTVIEWSTYLE = LVM_FIRST + 54;
@@ -131,6 +132,7 @@ namespace PersistentWindows.Common.WinApiBridge
         public const uint LVM_INSERTCOLUMNW = LVM_FIRST + 97;
 
         public const uint LVS_EX_GRIDLINES = 0x00000001;
+        public const uint LVS_EX_CHECKBOXES = 0x00000004;
         public const uint LVS_EX_FULLROWSELECT = 0x00000020;
         public const uint LVS_EX_DOUBLEBUFFER = 0x00010000;
 
@@ -148,6 +150,9 @@ namespace PersistentWindows.Common.WinApiBridge
 
         public const uint LVIS_FOCUSED = 0x0001;
         public const uint LVIS_SELECTED = 0x0002;
+
+        // 勾選方塊存在狀態圖示中：1 為未勾選，2 為已勾選
+        public const uint LVIS_STATEIMAGEMASK = 0xF000;
 
         public const uint LVNI_SELECTED = 0x0002;
 
@@ -489,6 +494,31 @@ namespace PersistentWindows.Common.WinApiBridge
             uint exStyle = NativeDialog.LVS_EX_FULLROWSELECT | NativeDialog.LVS_EX_DOUBLEBUFFER;
             NativeDialog.SendMessageW(handle, NativeDialog.LVM_SETEXTENDEDLISTVIEWSTYLE,
                 new IntPtr((int)exStyle), new IntPtr((int)exStyle));
+        }
+
+        /// <summary>在每一列前加上勾選方塊。</summary>
+        public void EnableCheckBoxes()
+        {
+            uint exStyle = NativeDialog.LVS_EX_CHECKBOXES;
+            NativeDialog.SendMessageW(handle, NativeDialog.LVM_SETEXTENDEDLISTVIEWSTYLE,
+                new IntPtr((int)exStyle), new IntPtr((int)exStyle));
+        }
+
+        public bool IsChecked(int index)
+        {
+            int state = NativeDialog.SendMessageW(handle, NativeDialog.LVM_GETITEMSTATE,
+                new IntPtr(index), new IntPtr((int)NativeDialog.LVIS_STATEIMAGEMASK)).ToInt32();
+            return ((state & (int)NativeDialog.LVIS_STATEIMAGEMASK) >> 12) == 2;
+        }
+
+        public void SetChecked(int index, bool isChecked)
+        {
+            var item = new LVITEMWHolder();
+            item.Value.mask = NativeDialog.LVIF_STATE;
+            item.Value.state = (uint)((isChecked ? 2 : 1) << 12);
+            item.Value.stateMask = NativeDialog.LVIS_STATEIMAGEMASK;
+            NativeDialog.SendMessageW(handle, NativeDialog.LVM_SETITEMSTATE,
+                new IntPtr(index), ref item.Value);
         }
 
         public void InsertColumn(int index, string text, int width, int format)

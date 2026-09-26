@@ -124,6 +124,12 @@ namespace PersistentWindows.Common.Models
         /// <summary>視窗類別名稱，用於比對執行中的視窗。</summary>
         public string ClassName { get; set; }
 
+        /// <summary>執行中視窗的代碼；只有「加入視窗」清單會填入。</summary>
+        public IntPtr WindowHandle { get; set; }
+
+        /// <summary>這個執行中的視窗是否已在目標快照中；只有「加入視窗」清單會填入。</summary>
+        public bool AlreadyInSnapshot { get; set; }
+
         public SnapshotWindowInfo()
         {
             ProcessName = String.Empty;

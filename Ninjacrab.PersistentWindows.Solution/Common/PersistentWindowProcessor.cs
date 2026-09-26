@@ -1523,6 +1523,300 @@ namespace PersistentWindows.Common
         /// 從快照中移除單一視窗的記錄。
         /// 硬碟快照會刪除資料庫中的該筆文件，記憶體快照則清除對應的快照旗標。
         /// </summary>
+        /// <summary>
+        /// 檢查目前能否把執行中的視窗加入指定快照。
+        ///
+        /// 快照記的是某個顯示器配置下的座標，所以只能加入同一個配置下的快照；
+        /// 還原進行中視窗正在移動，擷取到的也不是穩定的位置。
+        /// </summary>
+        private bool CanAddLiveWindows(SnapshotEntry entry, out string error)
+        {
+            error = null;
+
+            if (entry == null)
+            {
+                error = "請先選取一份快照。";
+                return false;
+            }
+
+            if (iconBusy || restoringFromMem || restoringFromDB || restoringSnapshot)
+            {
+                error = "還原進行中，請等還原結束後再試。";
+                return false;
+            }
+
+            string liveDisplayKey = GetDisplayKey();
+            if (liveDisplayKey != curDisplayKey)
+            {
+                error = "顯示設定正在變更，請稍候再試。";
+                return false;
+            }
+
+            if (entry.DisplayKey != liveDisplayKey)
+            {
+                error = String.Format(
+                    "這份快照是在不同的顯示器配置下擷取的，目前視窗的座標對它不適用，無法加入。{0}{0}"
+                    + "快照的配置：{1}{0}目前的配置：{2}",
+                    Environment.NewLine,
+                    DisplayKeyParser.ToCompactLayout(entry.DisplayKey),
+                    DisplayKeyParser.ToCompactLayout(liveDisplayKey));
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// 硬碟快照中的記錄沒有保存視窗代碼（IntPtr 在資料庫中存成空值），
+        /// 改用 WindowId 與行程名稱比對，與「從資料庫還原」對應視窗的方式一致。
+        /// </summary>
+        private static bool IsSameWindowRecord(ApplicationDisplayMetrics a, ApplicationDisplayMetrics b)
+        {
+            return a.WindowId != 0
+                && a.WindowId == b.WindowId
+                && String.Equals(a.ProcessName, b.ProcessName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// 列出目前可加入快照的執行中視窗，位置為呼叫當下重新擷取的結果。
+        /// 排除 PersistentWindows 自己的視窗與工作列。
+        /// </summary>
+        public List<SnapshotWindowInfo> GetLiveWindows(SnapshotEntry target, out string error)
+        {
+            var windows = new List<SnapshotWindowInfo>();
+            if (!CanAddLiveWindows(target, out error))
+                return windows;
+
+            try
+            {
+                CaptureApplicationsOnCurrentDisplays(curDisplayKey, immediateCapture: true);
+
+                var monitors = DisplayKeyParser.ParseMonitors(curDisplayKey);
+                uint ownProcessId = (uint)Process.GetCurrentProcess().Id;
+                var diskRecords = new List<ApplicationDisplayMetrics>();
+
+                if (target.Source == SnapshotSource.Disk)
+                {
+                    lock (dbLock)
+                    using (var persistDB = new LiteDatabase(persistDbName))
+                    {
+                        if (persistDB.CollectionExists(target.DbKey))
+                            diskRecords.AddRange(persistDB.GetCollection<ApplicationDisplayMetrics>(target.DbKey).FindAll());
+                    }
+                }
+
+                ulong mask = target.Source == SnapshotSource.Memory ? 1ul << target.SnapshotId : 0;
+
+                lock (captureLock)
+                {
+                    if (!monitorApplications.ContainsKey(curDisplayKey))
+                        return windows;
+
+                    foreach (var hwnd in monitorApplications[curDisplayKey].Keys)
+                    {
+                        var records = monitorApplications[curDisplayKey][hwnd];
+                        if (records.Count == 0)
+                            continue;
+
+                        if (!User32.IsWindow(hwnd) || !IsTopLevelWindow(hwnd) || IsTaskBar(hwnd))
+                            continue;
+
+                        var record = records[records.Count - 1];
+                        if (record.ProcessId == ownProcessId || String.IsNullOrEmpty(record.Title))
+                            continue;
+
+                        var info = ToSnapshotWindowInfo(record, monitors);
+                        info.WindowHandle = hwnd;
+
+                        if (target.Source == SnapshotSource.Memory)
+                        {
+                            foreach (var r in records)
+                            {
+                                if ((r.SnapShotFlags & mask) != 0)
+                                {
+                                    info.AlreadyInSnapshot = true;
+                                    break;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            foreach (var r in diskRecords)
+                            {
+                                if (IsSameWindowRecord(r, record))
+                                {
+                                    info.AlreadyInSnapshot = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        windows.Add(info);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex);
+                error = "讀取執行中的視窗時發生錯誤，詳情請見記錄。";
+                return new List<SnapshotWindowInfo>();
+            }
+
+            windows.Sort(delegate (SnapshotWindowInfo a, SnapshotWindowInfo b)
+            {
+                int result = String.Compare(a.ProcessName, b.ProcessName, StringComparison.CurrentCultureIgnoreCase);
+                if (result != 0)
+                    return result;
+                return String.Compare(a.Title, b.Title, StringComparison.CurrentCulture);
+            });
+
+            return windows;
+        }
+
+        /// <summary>
+        /// 把指定的執行中視窗以目前位置加入快照。已在快照中的視窗會改為更新位置，不會重複。
+        /// </summary>
+        public bool AddWindowsToSnapshot(SnapshotEntry entry, IList<IntPtr> handles,
+            out int added, out int updated, out string error)
+        {
+            added = 0;
+            updated = 0;
+
+            if (!CanAddLiveWindows(entry, out error))
+                return false;
+
+            if (handles == null || handles.Count == 0)
+            {
+                error = "沒有勾選任何視窗。";
+                return false;
+            }
+
+            try
+            {
+                CaptureApplicationsOnCurrentDisplays(curDisplayKey, immediateCapture: true);
+
+                if (entry.Source == SnapshotSource.Disk)
+                {
+                    // 在擷取鎖內只取出複本，資料庫 I/O 放在鎖外
+                    var copies = new List<KeyValuePair<IntPtr, ApplicationDisplayMetrics>>();
+                    lock (captureLock)
+                    {
+                        foreach (var hwnd in handles)
+                        {
+                            if (!monitorApplications[curDisplayKey].ContainsKey(hwnd))
+                                continue;
+
+                            var records = monitorApplications[curDisplayKey][hwnd];
+                            if (records.Count == 0 || !User32.IsWindow(hwnd))
+                                continue;
+
+                            copies.Add(new KeyValuePair<IntPtr, ApplicationDisplayMetrics>(hwnd,
+                                records[records.Count - 1].Clone()));
+                        }
+                    }
+
+                    // 與「擷取視窗佈局至硬碟」寫入時補上的欄位一致
+                    foreach (var pair in copies)
+                    {
+                        var copy = pair.Value;
+                        string exePath = GetProcExePath(copy.ProcessId);
+                        if (!String.IsNullOrEmpty(exePath))
+                            copy.ProcessExePath = exePath;
+                        copy.Guid = VirtualDesktop.GetWindowDesktopId(pair.Key);
+                        if ("CabinetWClass".Equals(copy.ClassName))
+                            copy.Dir = GetExplorerFolderPath(pair.Key);
+                        copy.Id = 0;
+                        copy.SnapShotFlags = 0;
+                        copy.IsValid = true;
+                    }
+
+                    lock (dbLock)
+                    using (var persistDB = new LiteDatabase(persistDbName))
+                    {
+                        if (!persistDB.CollectionExists(entry.DbKey))
+                        {
+                            error = "找不到這份快照，可能已被刪除。";
+                            return false;
+                        }
+
+                        var collection = persistDB.GetCollection<ApplicationDisplayMetrics>(entry.DbKey);
+                        var existing = new List<ApplicationDisplayMetrics>(collection.FindAll());
+
+                        foreach (var pair in copies)
+                        {
+                            bool replaced = false;
+                            foreach (var old in existing)
+                            {
+                                if (!IsSameWindowRecord(old, pair.Value))
+                                    continue;
+
+                                collection.Delete(old.Id);
+                                replaced = true;
+                            }
+
+                            collection.Insert(pair.Value);
+                            if (replaced)
+                                ++updated;
+                            else
+                                ++added;
+                        }
+                    }
+                }
+                else
+                {
+                    ulong mask = 1ul << entry.SnapshotId;
+                    lock (captureLock)
+                    {
+                        foreach (var hwnd in handles)
+                        {
+                            if (!monitorApplications[curDisplayKey].ContainsKey(hwnd))
+                                continue;
+
+                            var records = monitorApplications[curDisplayKey][hwnd];
+                            if (records.Count == 0 || !User32.IsWindow(hwnd))
+                                continue;
+
+                            // 與 TakeSnapshot 相同：旗標只留在最新的那一筆
+                            bool existed = false;
+                            foreach (var record in records)
+                            {
+                                if ((record.SnapShotFlags & mask) != 0)
+                                    existed = true;
+                                record.SnapShotFlags &= ~mask;
+                            }
+
+                            var last = records[records.Count - 1];
+                            last.SnapShotFlags |= mask;
+                            last.IsValid = true;
+
+                            if (existed)
+                                ++updated;
+                            else
+                                ++added;
+                        }
+                    }
+
+                    WriteDataDump();
+                }
+
+                if (added + updated == 0)
+                {
+                    error = "勾選的視窗都已經關閉，沒有加入任何視窗。";
+                    return false;
+                }
+
+                Log.Event("已將 {0} 個視窗加入快照 {1}（新增 {2} 個、更新位置 {3} 個）",
+                    added + updated, entry.Name, added, updated);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex);
+                error = "加入視窗時發生錯誤，詳情請見記錄。";
+                return false;
+            }
+        }
+
         public bool RemoveWindowFromSnapshot(SnapshotEntry entry, SnapshotWindowInfo info, out string error)
         {
             error = null;

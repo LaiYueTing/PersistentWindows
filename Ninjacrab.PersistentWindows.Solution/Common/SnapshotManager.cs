@@ -33,6 +33,7 @@ namespace PersistentWindows.Common
         private const int IdcButtonSave = 1105;
         private const int IdcButtonRestoreWindow = 1106;
         private const int IdcButtonRemoveWindow = 1107;
+        private const int IdcButtonAddWindows = 1108;
         private const int IdcButtonClose = NativeDialog.IDCANCEL;
 
         private const int IdcInputLabel = 1201;
@@ -60,6 +61,7 @@ namespace PersistentWindows.Common
         private const short ButtonCloseWidth = 58;
         private const short ButtonRestoreWindowWidth = 84;
         private const short ButtonRemoveWindowWidth = 96;
+        private const short ButtonAddWindowsWidth = 84;
 
         private static string DialogFontFace { get { return UiFont.FamilyName; } }
         private const short DialogFontSize = 9;
@@ -174,6 +176,10 @@ namespace PersistentWindows.Common
 
             builder.AddControl(DialogTemplateBuilder.AtomStatic, IdcWindowLabel, labelStyle, 0,
                 Margin, 114, listWidth, LabelHeight, "快照內部詳情：");
+            builder.AddControl(DialogTemplateBuilder.AtomButton, IdcButtonAddWindows, buttonStyle, 0,
+                (short)(DialogWidth - Margin - ButtonRestoreWindowWidth - Gap - ButtonRemoveWindowWidth
+                    - Gap - ButtonAddWindowsWidth), 111,
+                ButtonAddWindowsWidth, ButtonHeight, "加入視窗(&I) ...");
             builder.AddControl(DialogTemplateBuilder.AtomButton, IdcButtonRestoreWindow, buttonStyle, 0,
                 (short)(DialogWidth - Margin - ButtonRestoreWindowWidth - Gap - ButtonRemoveWindowWidth), 111,
                 ButtonRestoreWindowWidth, ButtonHeight, "還原此視窗(&W)");
@@ -387,6 +393,10 @@ namespace PersistentWindows.Common
                     RestoreSelectedWindow();
                     return new IntPtr(1);
 
+                case IdcButtonAddWindows:
+                    AddWindows();
+                    return new IntPtr(1);
+
                 case IdcButtonRemoveWindow:
                     RemoveSelectedWindow();
                     return new IntPtr(1);
@@ -453,9 +463,10 @@ namespace PersistentWindows.Common
             y += labelHeight + gapY;
             MoveControl(IdcSnapshotList, margin, y, contentWidth, snapshotHeight);
             y += snapshotHeight + gapY;
+            int addWinWidth = Dx(ButtonAddWindowsWidth);
             int restoreWinWidth = Dx(ButtonRestoreWindowWidth);
             int removeWinWidth = Dx(ButtonRemoveWindowWidth);
-            int winButtonsWidth = restoreWinWidth + gap + removeWinWidth;
+            int winButtonsWidth = addWinWidth + gap + restoreWinWidth + gap + removeWinWidth;
             int labelRowHeight = Math.Max(labelHeight, buttonHeight);
 
             int labelWidth = contentWidth - winButtonsWidth - gap;
@@ -463,7 +474,9 @@ namespace PersistentWindows.Common
                 labelWidth = Dx(40);
 
             MoveControl(IdcWindowLabel, margin, y + (labelRowHeight - labelHeight) / 2, labelWidth, labelHeight);
-            MoveControl(IdcButtonRestoreWindow, margin + contentWidth - winButtonsWidth, y,
+            MoveControl(IdcButtonAddWindows, margin + contentWidth - winButtonsWidth, y,
+                addWinWidth, buttonHeight);
+            MoveControl(IdcButtonRestoreWindow, margin + contentWidth - restoreWinWidth - gap - removeWinWidth, y,
                 restoreWinWidth, buttonHeight);
             MoveControl(IdcButtonRemoveWindow, margin + contentWidth - removeWinWidth, y,
                 removeWinWidth, buttonHeight);
@@ -534,6 +547,34 @@ namespace PersistentWindows.Common
         #endregion
 
         #region 清單內容
+
+        /// <summary>
+        /// 重新載入後選回同一份快照。硬碟快照以資料庫鍵值比對，
+        /// 記憶體快照以顯示設定加編號比對；只傳鍵值時記憶體快照會跳回第一列。
+        /// </summary>
+        private void ReloadCatalog(SnapshotEntry entryToSelect)
+        {
+            if (entryToSelect == null || entryToSelect.Source == SnapshotSource.Disk)
+            {
+                ReloadCatalog(entryToSelect == null ? String.Empty : entryToSelect.DbKey);
+                return;
+            }
+
+            ReloadCatalog(String.Empty);
+
+            for (int i = 0; i < catalog.Count; ++i)
+            {
+                if (catalog[i].Source == SnapshotSource.Memory
+                    && catalog[i].SnapshotId == entryToSelect.SnapshotId
+                    && catalog[i].DisplayKey == entryToSelect.DisplayKey)
+                {
+                    snapshotList.Select(i);
+                    RefreshWindowDetails();
+                    UpdateButtonState();
+                    break;
+                }
+            }
+        }
 
         private void ReloadCatalog(string dbKeyToSelect)
         {
@@ -639,6 +680,7 @@ namespace PersistentWindows.Common
             NativeDialog.EnableWindow(NativeDialog.GetDlgItem(dialogHandle, IdcButtonApply), hasSelection);
             NativeDialog.EnableWindow(NativeDialog.GetDlgItem(dialogHandle, IdcButtonDelete), hasSelection);
             NativeDialog.EnableWindow(NativeDialog.GetDlgItem(dialogHandle, IdcButtonRename), isDiskSnapshot);
+            NativeDialog.EnableWindow(NativeDialog.GetDlgItem(dialogHandle, IdcButtonAddWindows), hasSelection);
 
             UpdateWindowButtonState();
         }
@@ -891,7 +933,44 @@ namespace PersistentWindows.Common
                 return;
             }
 
-            ReloadCatalog(entry.Source == SnapshotSource.Disk ? entry.DbKey : String.Empty);
+            ReloadCatalog(entry);
+        }
+
+        /// <summary>
+        /// 從執行中的視窗勾選，以目前的位置加入選取的快照。
+        /// </summary>
+        private void AddWindows()
+        {
+            var entry = SelectedEntry;
+            if (entry == null)
+                return;
+
+            string error;
+            var live = pwp.GetLiveWindows(entry, out error);
+            if (error != null)
+            {
+                ShowError(error);
+                return;
+            }
+
+            if (live.Count == 0)
+            {
+                ShowError("目前沒有可加入的視窗。");
+                return;
+            }
+
+            var handles = WindowPicker.Show(dialogHandle, entry, live);
+            if (handles == null || handles.Count == 0)
+                return;
+
+            int added, updated;
+            if (!pwp.AddWindowsToSnapshot(entry, handles, out added, out updated, out error))
+            {
+                ShowError(error);
+                return;
+            }
+
+            ReloadCatalog(entry);
         }
 
         private void ShowError(string message)
