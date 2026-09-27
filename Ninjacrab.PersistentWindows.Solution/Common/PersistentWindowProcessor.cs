@@ -42,6 +42,9 @@ namespace PersistentWindows.Common
         private const int MaxHistoryQueueLength = 41; // ideally bigger than MaxSnapshots + 2
 
         private const int PauseRestoreTaskbar = 3500; //cursor idle time before dragging taskbar
+        private const int TaskbarButtonSyncInterval = 2000; // poll interval while waiting for every display to get its taskbar back
+        private const int TaskbarButtonSyncMaxPolls = 30; // give up waiting after 30 polls (60 seconds)
+        private const int TaskbarButtonSyncRepeatDelay = 5000; // one more pass after explorer finishes laying out recreated taskbars
         private const int MinClassNamePrefix = 8; //allow partial class name matching during inheritance
         public int MaxDiffPos = 40; //allow matching window of slightly different position
 
@@ -115,6 +118,10 @@ namespace PersistentWindows.Common
         private Timer restoreTimer;
         private Timer restoreFinishedTimer;
         private Timer restoreWatchdogTimer;
+        private Timer taskbarButtonSyncTimer;
+        private readonly object taskbarButtonSyncLock = new object();
+        private int taskbarButtonSyncPolls = 0;
+        private bool taskbarButtonSyncRepeat = false;
         public bool restoringFromMem = false; // automatic restore from memory or snapshot
         private bool restoreSingleWindow = false;
         public bool restoringFromDB = false; // manual restore from DB
@@ -811,6 +818,7 @@ namespace PersistentWindows.Common
 
             restoreTimer = new Timer(TimerRestore);
             restoreWatchdogTimer = new Timer(RestoreWatchdogCallback);
+            taskbarButtonSyncTimer = new Timer(TaskbarButtonSyncCallback);
 
             restoreFinishedTimer = new Timer(state =>
             {
@@ -879,6 +887,8 @@ namespace PersistentWindows.Common
 
                     Log.Event("第 {0} 回合還原完成，顯示設定 {2} 共還原 {1} 個視窗", restorePass, numWindowRestored, curDisplayKey);
                     sessionActive = true;
+
+                    ScheduleTaskbarButtonSync();
 
                     if (!wasRestoringSnapshot && !wasRestoringFromDB)
                     {
@@ -5675,6 +5685,152 @@ namespace PersistentWindows.Common
             return hTaskBar;
         }
 
+        // Windows 11 原生工作列由 XAML 繪製，Shell_TrayWnd 底下會有 DesktopWindowContentBridge；
+        // Windows 10 以及用 ExplorerPatcher 等工具換回舊式工作列的環境則沒有
+        private static bool IsXamlTaskBar()
+        {
+            IntPtr tray = User32.FindWindowW("Shell_TrayWnd", null);
+            return tray != IntPtr.Zero
+                && User32.FindWindowEx(tray, IntPtr.Zero, "Windows.UI.Composition.DesktopWindowContentBridge", null) != IntPtr.Zero;
+        }
+
+        /// <summary>
+        /// 還原結束後，請工作列依視窗目前所在的顯示器重新放置按鈕。
+        ///
+        /// 工作列設為「在視窗開啟所在的工作列顯示按鈕」時，按鈕放在哪台顯示器的工作列，是 Explorer
+        /// 收到視窗換顯示器的通知 (HSHELL_MONITORCHANGED) 當下決定的。顯示器長時間睡眠後喚醒，
+        /// 副顯示器的工作列要過一陣子才會重建；視窗若在那之前就被搬回去（PW 還原或 Windows 自己搬），
+        /// 通知送到時那台顯示器還沒有工作列，按鈕就留在別台，之後也不會自己歸位。
+        ///
+        /// 這裡等每台顯示器的工作列都出現後，替每個有工作列按鈕的視窗補送同樣的通知；
+        /// 按鈕原本就在正確工作列上的視窗，Explorer 收到後不會有任何變化。
+        /// </summary>
+        private void ScheduleTaskbarButtonSync()
+        {
+            if (GetDisplays().Count < 2)
+                return;
+
+            const string advanced = @"HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced";
+            try
+            {
+                // 只在主顯示器顯示工作列：所有按鈕都在同一條工作列上
+                if (Convert.ToInt32(Registry.GetValue(advanced, "MMTaskbarEnabled", 1) ?? 1) == 0)
+                    return;
+                // 0（預設）＝每條工作列都顯示全部按鈕，不會有放錯工作列的問題
+                if (Convert.ToInt32(Registry.GetValue(advanced, "MMTaskbarMode", 0) ?? 0) == 0)
+                    return;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex);
+                return;
+            }
+
+            lock (taskbarButtonSyncLock)
+            {
+                taskbarButtonSyncPolls = 0;
+                taskbarButtonSyncRepeat = true;
+                taskbarButtonSyncTimer?.Change(TaskbarButtonSyncInterval, Timeout.Infinite);
+            }
+        }
+
+        private void TaskbarButtonSyncCallback(object state)
+        {
+            lock (taskbarButtonSyncLock)
+            {
+                try
+                {
+                    bool ready = AllDisplaysHaveTaskBar();
+                    if (!ready && ++taskbarButtonSyncPolls < TaskbarButtonSyncMaxPolls)
+                    {
+                        taskbarButtonSyncTimer?.Change(TaskbarButtonSyncInterval, Timeout.Infinite);
+                        return;
+                    }
+                    if (!ready)
+                        Log.Info("等候各顯示器的工作列重建逾時");
+
+                    int count = NotifyTaskBarMonitorChanged();
+                    Log.Info("已請工作列依視窗所在顯示器重新放置 {0} 個按鈕", count);
+
+                    // Explorer 剛重建完工作列時可能還在排版，稍後再補送一次
+                    if (taskbarButtonSyncRepeat)
+                    {
+                        taskbarButtonSyncRepeat = false;
+                        taskbarButtonSyncTimer?.Change(TaskbarButtonSyncRepeatDelay, Timeout.Infinite);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex);
+                }
+            }
+        }
+
+        private bool AllDisplaysHaveTaskBar()
+        {
+            IntPtr tray = User32.FindWindowW("Shell_TrayWnd", null);
+            if (tray == IntPtr.Zero || !User32.IsWindowVisible(tray))
+                return false;
+
+            var monitors = new HashSet<IntPtr>();
+            monitors.Add(User32.MonitorFromWindow(tray, User32.MONITOR_DEFAULTTONEAREST));
+            for (IntPtr h = User32.FindWindowEx(IntPtr.Zero, IntPtr.Zero, "Shell_SecondaryTrayWnd", null);
+                h != IntPtr.Zero;
+                h = User32.FindWindowEx(IntPtr.Zero, h, "Shell_SecondaryTrayWnd", null))
+            {
+                if (User32.IsWindowVisible(h))
+                    monitors.Add(User32.MonitorFromWindow(h, User32.MONITOR_DEFAULTTONEAREST));
+            }
+
+            return monitors.Count >= GetDisplays().Count;
+        }
+
+        private static int NotifyTaskBarMonitorChanged()
+        {
+            // 所有工作列（含副顯示器）的按鈕都由主工作列上的 MSTaskSwWClass 管理，shell hook 訊息也由它接收
+            IntPtr tray = User32.FindWindowW("Shell_TrayWnd", null);
+            if (tray == IntPtr.Zero)
+                return 0;
+            IntPtr rebar = User32.FindWindowEx(tray, IntPtr.Zero, "ReBarWindow32", null);
+            if (rebar == IntPtr.Zero)
+                return 0;
+            IntPtr taskSw = User32.FindWindowEx(rebar, IntPtr.Zero, "MSTaskSwWClass", null);
+            if (taskSw == IntPtr.Zero)
+                return 0;
+
+            uint shellHookMsg = User32.RegisterWindowMessage("SHELLHOOK");
+            if (shellHookMsg == 0)
+                return 0;
+
+            int count = 0;
+            for (IntPtr hwnd = User32.GetTopWindow(desktopWindow); hwnd != IntPtr.Zero; hwnd = User32.GetWindow(hwnd, User32.GW_HWNDNEXT))
+            {
+                if (!HasTaskBarButton(hwnd))
+                    continue;
+                if (User32.PostMessageW(taskSw, shellHookMsg, (IntPtr)User32.HSHELL_MONITORCHANGED, hwnd))
+                    ++count;
+            }
+
+            return count;
+        }
+
+        // 大致比照 Explorer 的規則：可見的頂層視窗才有按鈕，工具視窗與被擁有的視窗則要帶 WS_EX_APPWINDOW 才有。
+        // 最小化視窗不處理，它們的按鈕由還原流程另外處理 (#224)
+        private static bool HasTaskBarButton(IntPtr hwnd)
+        {
+            if (!User32.IsWindowVisible(hwnd) || User32.IsIconic(hwnd) || IsTaskBar(hwnd))
+                return false;
+            if (User32.GetAncestor(hwnd, User32.GetAncestorParent) != desktopWindow)
+                return false;
+
+            long exStyle = User32.GetWindowLong(hwnd, User32.GWL_EXSTYLE);
+            if ((exStyle & User32.WS_EX_APPWINDOW) != 0)
+                return true;
+            if ((exStyle & User32.WS_EX_TOOLWINDOW) != 0)
+                return false;
+            return User32.GetWindow(hwnd, User32.GW_OWNER) == IntPtr.Zero;
+        }
+
         private bool RestoreApplicationsOnCurrentDisplays(string displayKey, IntPtr sWindow, DateTime time)
         {
             bool extra_restore = false;
@@ -5956,6 +6112,14 @@ namespace PersistentWindows.Common
                 {
                     if (fixTaskBar == 0 && !restoringFromDB && !restoringSnapshot)
                         continue; //auto restore taskbar disabled
+
+                    if (IsXamlTaskBar())
+                    {
+                        // Windows 11 的工作列不能用滑鼠拖曳移動或調整大小，下面的模擬拖曳只會在工作列上
+                        // 按住左鍵數秒並切換鎖定狀態；顯示器剛喚醒、Explorer 正在重建工作列時這麼做還可能讓工作列卡住
+                        Log.Info("Windows 11 工作列無法拖曳，略過還原工作列位置");
+                        continue;
+                    }
 
                     if (!IsTaskbarAligned(hWnd))
                     {
@@ -6684,6 +6848,15 @@ namespace PersistentWindows.Common
                 {
                     restoreWatchdogTimer.Dispose();
                     restoreWatchdogTimer = null;
+                }
+
+                if (taskbarButtonSyncTimer != null)
+                {
+                    lock (taskbarButtonSyncLock)
+                    {
+                        taskbarButtonSyncTimer.Dispose();
+                        taskbarButtonSyncTimer = null;
+                    }
                 }
             }
         }
