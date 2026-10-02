@@ -479,6 +479,11 @@ namespace PersistentWindows.Common.WinApiBridge
         public const int WS_EX_TOPMOST = 0x00000008;
         public const int WS_EX_LAYERED = 0x00080000;
         public const int WS_EX_TRANSPARENT = 0x00000020;
+        public const int WS_EX_TOOLWINDOW = 0x00000080;
+        public const int WS_EX_APPWINDOW = 0x00040000;
+
+        public const uint GW_HWNDNEXT = 2;
+        public const uint GW_OWNER = 4;
 
         public const int GWL_STYLE = -16;
         public const long WS_CAPTION = 0x00C00000L;
@@ -516,6 +521,14 @@ namespace PersistentWindows.Common.WinApiBridge
         public const int WM_GETICON = 0x7F;
         public const int SC_MINIMIZE = 0xF020;
         public const int SC_TOGGLE_TASKBAR_LOCK = 424;
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "RegisterWindowMessageW")]
+        public static extern uint RegisterWindowMessage(string lpString);
+        public const int HSHELL_MONITORCHANGED = 16;
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr MonitorFromWindow(IntPtr hWnd, int dwFlags);
+
         [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "SendMessageTimeoutW")]
         public static extern int SendMessageTimeout(IntPtr handle, int uMsg, uint wParam, uint lParam, uint fuFlags, int uTimeout, out uint lpdwResult);
         // SendMessageTimeoutFlags
